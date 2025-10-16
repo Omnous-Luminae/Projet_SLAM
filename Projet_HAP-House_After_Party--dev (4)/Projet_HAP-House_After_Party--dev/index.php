@@ -33,8 +33,8 @@ require_once __DIR__ . '/Projet_HAP(House_After_Party)/config/db.php';
         session_start();
         if (isset($_SESSION['user_name'])) {
             echo '<span class="welcome-msg">Bienvenue, ' . htmlspecialchars($_SESSION['user_name']) . '</span>';
-            if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
-                echo '<a href="Projet_HAP(House_After_Party)/admin/dashboard.php" class="btn-admin">Admin Dashboard</a>';
+            if (isset($_SESSION['role']) && $_SESSION['role'] === 'animateur') {
+                echo '<a href="apropos.php" class="btn-admin">🛠️ Dashboard Admin</a>';
             }
             echo '<a href="Projet_HAP(House_After_Party)/auth/logout.php" class="btn-logout">Se déconnecter</a>';
         } else {

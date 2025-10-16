@@ -36,7 +36,7 @@ try {
         // passer en mode édition (charge les données pour pré-remplir le formulaire)
         } elseif (isset($_POST['edit_mode'])) {
             $id = intval($_POST['edit_mode']);
-            $stmt = $pdo->prepare('SELECT * FROM Biens WHERE id_biens = :id_biens');
+            $stmt = $pdo->prepare('SELECT b.*, c.nom_commune, c.cp_commune FROM Biens b LEFT JOIN Commune c ON b.id_commune = c.id_commune WHERE b.id_biens = :id_biens');
             $stmt->execute([':id_biens' => $id]);
             $editing_data = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($editing_data) $editing = true;
@@ -133,6 +133,39 @@ try {
                     ':id_type_biens' => $id_type_biens
                 ]);
 
+                $id_bien = $pdo->lastInsertId();
+
+                // Gestion des photos
+                if (!empty($_FILES['photos']['name'][0])) {
+                    $uploadDir = __DIR__ . '/../images/uploads/';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+
+                    foreach ($_FILES['photos']['tmp_name'] as $key => $tmp_name) {
+                        if ($_FILES['photos']['error'][$key] === UPLOAD_ERR_OK) {
+                            $fileName = basename($_FILES['photos']['name'][$key]);
+                            $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                            $allowedExts = ['jpg', 'jpeg', 'png', 'gif'];
+
+                            if (in_array($fileExt, $allowedExts)) {
+                                $newFileName = uniqid('photo_', true) . '.' . $fileExt;
+                                $filePath = $uploadDir . $newFileName;
+
+                                if (move_uploaded_file($tmp_name, $filePath)) {
+                                    $lienPhoto = 'images/uploads/' . $newFileName;
+                                    $stmtPhoto = $pdo->prepare('INSERT INTO Photos (nom_photos, lien_photo, id_biens) VALUES (:nom, :lien, :id_bien)');
+                                    $stmtPhoto->execute([
+                                        ':nom' => $fileName,
+                                        ':lien' => $lienPhoto,
+                                        ':id_bien' => $id_bien
+                                    ]);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 $message = 'Annonce ajoutée avec succès.';
             } else {
                 $message = implode('<br>', $errors);
@@ -164,143 +197,290 @@ try {
     <meta charset="utf-8">
     <title>Créer une annonce</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
     <style>
-        body { font-family: 'Montserrat', Arial, sans-serif; background:#f7f7f9; margin:0; }
-        .container { max-width:900px; margin:40px auto; background:#fff; border-radius:18px; box-shadow:0 2px 16px rgba(80,0,80,0.06); padding:30px; }
-        h2{ text-align:center }
-        form { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-        label{ display:block; font-weight:600; margin-bottom:6px }
-        input, textarea, select { padding:8px; border-radius:6px; border:1px solid #ccc; width:100%; box-sizing:border-box }
-        textarea { min-height:120px }
-        .full { grid-column: 1 / -1 }
-        .actions { text-align:center }
-        .btn { background:#a100b8; color:#fff; padding:10px 18px; border:none; border-radius:8px; cursor:pointer }
-        table { width:100%; border-collapse:collapse; margin-top:18px }
-        th,td{ border:1px solid #eee; padding:8px; text-align:left }
-        .message{ text-align:center; color:green; margin-bottom:12px }
-        .error{ color:#b00020 }
+        body { font-family: 'Montserrat', Arial, sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 40px; text-align: center; }
+        .header h1 { margin: 0; font-size: 2.5em; font-weight: 700; }
+        .header p { margin: 10px 0 0; font-size: 1.2em; opacity: 0.9; }
+        .form-section { padding: 40px; }
+        .section { margin-bottom: 40px; background: #f9f9f9; border-radius: 15px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .section h3 { margin-top: 0; color: #333; font-size: 1.5em; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: 600; margin-bottom: 8px; color: #555; display: flex; align-items: center; }
+        .form-group label i { margin-right: 8px; color: #667eea; }
+        input, textarea, select { padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; transition: border-color 0.3s; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        textarea { min-height: 120px; resize: vertical; }
+        .full-width { grid-column: 1 / -1; }
+        .checkbox-group { display: flex; align-items: center; }
+        .checkbox-group input { width: auto; margin-right: 10px; }
+        .photo-upload { border: 2px dashed #667eea; border-radius: 15px; padding: 40px; text-align: center; background: #f0f4ff; transition: background 0.3s; position: relative; }
+        .photo-upload:hover, .photo-upload.dragover { background: #e8f0ff; border-color: #4a5fd5; }
+        .photo-upload i { font-size: 3em; color: #667eea; margin-bottom: 10px; }
+        .photo-preview { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+        .preview-item { position: relative; display: inline-block; }
+        .preview-image { width: 100px; height: 100px; object-fit: cover; border-radius: 10px; border: 2px solid #667eea; }
+        .remove-preview { position: absolute; top: -5px; right: -5px; background: #ff6b6b; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        .remove-preview:hover { background: #ee5a52; }
+        .existing-photos { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+        .photo-item { position: relative; }
+        .photo-item img { width: 100px; height: 100px; object-fit: cover; border-radius: 10px; }
+        .photo-item label { position: absolute; top: 5px; right: 5px; background: rgba(255,255,255,0.8); border-radius: 50%; padding: 5px; cursor: pointer; }
+        .actions { text-align: center; margin-top: 30px; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 15px 30px; border: none; border-radius: 25px; font-size: 18px; font-weight: 600; cursor: pointer; transition: transform 0.2s; margin: 0 10px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .btn-danger { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); }
+        .btn-secondary { background: #6c757d; }
+        .message { text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .listings { margin-top: 40px; }
+        .listings h3 { text-align: center; color: #333; margin-bottom: 20px; }
+        .listing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .listing-card { background: #fff; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.3s; }
+        .listing-card:hover { transform: translateY(-5px); }
+        .listing-card img { width: 100%; height: 200px; object-fit: cover; }
+        .listing-card .content { padding: 20px; }
+        .listing-card h4 { margin: 0 0 10px; color: #333; }
+        .listing-card p { margin: 5px 0; color: #666; }
+        .listing-card .actions { margin-top: 15px; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #667eea; text-decoration: none; font-weight: 600; }
+        .back-link:hover { text-decoration: underline; }
+        @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } .header h1 { font-size: 2em; } }
     </style>
+    <script>
+        $(document).ready(function() {
+            $("#commune").autocomplete({
+                source: function(request, response) {
+                    $.ajax({
+                        url: "../api/search_communes.php",
+                        dataType: "json",
+                        data: {
+                            q: request.term
+                        },
+                        success: function(data) {
+                            response(data);
+                        }
+                    });
+                },
+                minLength: 2,
+                select: function(event, ui) {
+                    $("#commune").val(ui.item.label);
+                    $("#id_commune").val(ui.item.id);
+                    return false;
+                }
+            });
+
+            $("#commune").on('input', function() {
+                $("#id_commune").val('');
+            });
+
+            $("#annonce_form").on('submit', function(e) {
+                if (!$("#id_commune").val()) {
+                    alert("Veuillez sélectionner une commune valide dans la liste d'autocomplétion.");
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            // Photo preview functionality
+            $("#photos").on('change', function(e) {
+                const files = e.target.files;
+                const previewContainer = $("#photo-preview");
+
+                // Clear existing previews
+                previewContainer.empty();
+
+                if (files.length > 0) {
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                const img = $('<img>').attr('src', e.target.result).addClass('preview-image');
+                                const removeBtn = $('<button>').addClass('remove-preview').html('<i class="fas fa-times"></i>').attr('type', 'button');
+                                const previewItem = $('<div>').addClass('preview-item').append(img).append(removeBtn);
+                                previewContainer.append(previewItem);
+
+                                // Remove preview functionality
+                                removeBtn.on('click', function() {
+                                    previewItem.remove();
+                                    // Remove from input files
+                                    const dt = new DataTransfer();
+                                    const input = $("#photos")[0];
+                                    const { files } = input;
+
+                                    for (let j = 0; j < files.length; j++) {
+                                        if (j !== i) {
+                                            dt.items.add(files[j]);
+                                        }
+                                    }
+                                    input.files = dt.files;
+                                });
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    }
+                }
+            });
+
+            // Drag and drop functionality
+            const photoUpload = $(".photo-upload");
+            photoUpload.on('dragover dragenter', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).addClass('dragover');
+            });
+
+            photoUpload.on('dragleave dragend', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).removeClass('dragover');
+            });
+
+            photoUpload.on('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).removeClass('dragover');
+
+                const files = e.originalEvent.dataTransfer.files;
+                const input = $("#photos")[0];
+                input.files = files;
+                $(input).trigger('change');
+            });
+        });
+    </script>
 </head>
 <body>
     <div class="container">
-        <a href="/../index.php">&larr; Retour</a>
-        <h2>Créer une annonce</h2>
-        <?php if ($message): ?>
-            <div class="message"><?= $message ?></div>
-        <?php endif; ?>
-        <form method="post" enctype="multipart/form-data">
-            <?php if (!empty($editing_data)): ?>
-                <input type="hidden" name="id_biens" value="<?= htmlspecialchars($editing_data['id_biens']) ?>">
+        <div class="header">
+            <h1><i class="fas fa-home"></i> Créer une annonce</h1>
+            <p>Partagez votre propriété avec des voyageurs du monde entier</p>
+        </div>
+        <div class="form-section">
+            <a href="/../index.php" class="back-link"><i class="fas fa-arrow-left"></i> Retour à l'accueil</a>
+            <?php if ($message): ?>
+                <div class="message <?= strpos($message, 'Erreur') === 0 ? 'error' : 'success' ?>"><?= $message ?></div>
             <?php endif; ?>
-            <div>
-                <label for="nom_bien">Titre / Nom du bien</label>
-                <input type="text" id="nom_bien" name="nom_bien" required value="<?= htmlspecialchars($editing_data['nom_biens'] ?? '') ?>">
+            <div class="section">
+                <h3><i class="fas fa-info-circle"></i> Informations générales</h3>
+                <form method="post" enctype="multipart/form-data" id="annonce_form">
+                    <?php if (!empty($editing_data)): ?>
+                        <input type="hidden" name="id_biens" value="<?= htmlspecialchars($editing_data['id_biens']) ?>">
+                    <?php endif; ?>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="nom_bien"><i class="fas fa-tag"></i> Titre / Nom du bien</label>
+                            <input type="text" id="nom_bien" name="nom_bien" required value="<?= htmlspecialchars($editing_data['nom_biens'] ?? '') ?>" placeholder="Ex: Charming cottage in the countryside">
+                        </div>
+                        <div class="form-group">
+                            <label for="id_type_biens"><i class="fas fa-building"></i> Type de bien</label>
+                            <select id="id_type_biens" name="id_type_biens" required>
+                                <option value="">-- Choisir un type --</option>
+                                <?php foreach ($types as $t): ?>
+                                    <option value="<?= htmlspecialchars($t['id_type_biens']) ?>" <?= (isset($editing_data) && $editing_data['id_type_biens'] == $t['id_type_biens']) ? 'selected' : '' ?>><?= htmlspecialchars($t['designation_type_bien']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="rue_bien"><i class="fas fa-map-marker-alt"></i> Rue / Adresse</label>
+                            <input type="text" id="rue_bien" name="rue_bien" required value="<?= htmlspecialchars($editing_data['rue_biens'] ?? '') ?>" placeholder="123 Main Street">
+                        </div>
+                        <div class="form-group">
+                            <label for="commune"><i class="fas fa-city"></i> Commune</label>
+                            <input type="text" id="commune" name="commune" placeholder="Rechercher une commune..." required value="<?= isset($editing_data) ? htmlspecialchars($editing_data['nom_commune'] . ' (' . $editing_data['cp_commune'] . ')') : '' ?>">
+                            <input type="hidden" id="id_commune" name="id_commune" value="<?= isset($editing_data) ? htmlspecialchars($editing_data['id_commune']) : '' ?>">
+                        </div>
+                        <div class="form-group">
+                            <label for="superficie_bien"><i class="fas fa-ruler-combined"></i> Superficie (m²)</label>
+                            <input type="number" id="superficie_bien" name="superficie_bien" min="1" required value="<?= htmlspecialchars($editing_data['superficie_biens'] ?? '') ?>" placeholder="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="nb_couchage"><i class="fas fa-bed"></i> Nombre de couchages</label>
+                            <input type="number" id="nb_couchage" name="nb_couchage" min="1" value="<?= htmlspecialchars($editing_data['nb_couchage'] ?? 1) ?>" required placeholder="2">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="description_bien"><i class="fas fa-align-left"></i> Description</label>
+                            <textarea id="description_bien" name="description_bien" required placeholder="Décrivez votre propriété de manière attrayante..."><?= htmlspecialchars($editing_data['description_biens'] ?? '') ?></textarea>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label for="animal_bien"><i class="fas fa-paw"></i> Animaux acceptés</label>
+                            <input type="checkbox" id="animal_bien" name="animal_bien" value="1" <?= (!empty($editing_data) && $editing_data['animal_biens']) ? 'checked' : '' ?>>
+                        </div>
+                    </div>
+                </form>
             </div>
-            <div>
-                <label for="id_type_biens">Type de bien</label>
-                <select id="id_type_biens" name="id_type_biens" required>
-                    <option value="">-- Choisir --</option>
-                    <?php foreach ($types as $t): ?>
-                        <option value="<?= htmlspecialchars($t['id_type_biens']) ?>" <?= (isset($editing_data) && $editing_data['id_type_biens'] == $t['id_type_biens']) ? 'selected' : '' ?>><?= htmlspecialchars($t['designation_type_bien']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div>
-                <label for="rue_bien">Rue / Adresse</label>
-                <input type="text" id="rue_bien" name="rue_bien" required value="<?= htmlspecialchars($editing_data['rue_biens'] ?? '') ?>">
-            </div>
-            <div>
-                <label for="id_commune">Commune</label>
-                <select id="id_commune" name="id_commune" required>
-                    <option value="">-- Choisir --</option>
-                    <?php foreach ($communes as $c): ?>
-                        <option value="<?= htmlspecialchars($c['id_commune']) ?>" <?= (isset($editing_data) && $editing_data['id_commune'] == $c['id_commune']) ? 'selected' : '' ?>><?= htmlspecialchars($c['nom_commune']) ?> (<?= htmlspecialchars($c['cp_commune']) ?>)</option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div>
-                <label for="superficie_bien">Superficie (m²)</label>
-                <input type="number" id="superficie_bien" name="superficie_bien" min="1" required value="<?= htmlspecialchars($editing_data['superficie_biens'] ?? '') ?>">
-            </div>
-            <div>
-                <label for="nb_couchage">Nombre de couchages</label>
-                <input type="number" id="nb_couchage" name="nb_couchage" min="1" value="<?= htmlspecialchars($editing_data['nb_couchage'] ?? 1) ?>" required>
-            </div>
-            <div class="full">
-                <label for="description_bien">Description</label>
-                <textarea id="description_bien" name="description_bien" required><?= htmlspecialchars($editing_data['description_biens'] ?? '') ?></textarea>
-            </div>
-            <div>
-                <label for="animal_bien">Animaux acceptés</label>
-                <input type="checkbox" id="animal_bien" name="animal_bien" value="1" <?= (!empty($editing_data) && $editing_data['animal_biens']) ? 'checked' : '' ?> >
-            </div>
-            <div class="full">
-                <label for="photos">Photos (plusieurs possible)</label>
-                <input type="file" id="photos" name="photos[]" accept="image/*" multiple>
+
+            <div class="section">
+                <h3><i class="fas fa-camera"></i> Photos de votre propriété</h3>
+                <div class="photo-upload">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Glissez-déposez vos photos ici ou cliquez pour sélectionner</p>
+                    <input type="file" id="photos" name="photos[]" accept="image/*" multiple style="display: none;">
+                    <button type="button" class="btn" onclick="document.getElementById('photos').click()">Choisir des fichiers</button>
+                </div>
+                <div id="photo-preview" class="photo-preview"></div>
                 <?php if (!empty($editing_data)): ?>
-                    <div style="margin-top:8px">
+                    <div class="existing-photos">
                         <?php
-                        $stmtp = $pdo->prepare('SELECT id_photos, lien_photo FROM Photos WHERE id_biens = :id_biens');
+                        $stmtp = $pdo->prepare('SELECT id_photo, lien_photo FROM Photos WHERE id_biens = :id_biens');
                         $stmtp->execute([':id_biens' => $editing_data['id_biens']]);
                         $existing_photos = $stmtp->fetchAll(PDO::FETCH_ASSOC);
                         foreach ($existing_photos as $p) {
-                            echo '<div style="display:inline-block; text-align:center; margin-right:6px">';
-                            echo '<img src="/' . htmlspecialchars($p['lien_photo']) . '" style="max-height:60px; display:block">';
-                            echo '<label style="font-size:12px"><input type="checkbox" name="delete_photo_ids[]" value="' . (int)$p['id_photos'] . '"> Supprimer</label>';
+                            echo '<div class="photo-item">';
+                            echo '<img src="/' . htmlspecialchars($p['lien_photo']) . '" alt="Photo existante">';
+                            echo '<label><input type="checkbox" name="delete_photo_ids[]" value="' . (int)$p['id_photo'] . '"><i class="fas fa-trash"></i></label>';
                             echo '</div>';
                         }
                         ?>
                     </div>
                 <?php endif; ?>
             </div>
-            <div class="full actions">
+
+            <div class="actions">
                 <?php if (!empty($editing_data)): ?>
-                    <button class="btn" type="submit" name="update_annonce">Mettre à jour</button>
-                    <button class="btn" type="submit" name="delete_annonce" value="<?= htmlspecialchars($editing_data['id_biens']) ?>" style="margin-left:8px; background:#b00020" onclick="return confirm('Supprimer cette annonce ?');">Supprimer</button>
-                    <a href="/Projet_HAP(House_After_Party)/forms/Annonce.form.php" style="margin-left:8px; color:#a100b8; font-weight:600; text-decoration:none">Annuler</a>
+                    <button class="btn" type="submit" form="annonce_form" name="update_annonce">Mettre à jour l'annonce</button>
+                    <button class="btn btn-danger" type="submit" form="annonce_form" name="delete_annonce" value="<?= htmlspecialchars($editing_data['id_biens']) ?>" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?');">Supprimer</button>
+                    <a href="/Projet_HAP(House_After_Party)/forms/Annonce.form.php" class="btn btn-secondary">Annuler</a>
                 <?php else: ?>
-                    <button class="btn" type="submit" name="submit_annonce">Publier l'annonce</button>
+                    <button class="btn" type="submit" form="annonce_form" name="submit_annonce">Publier l'annonce</button>
                 <?php endif; ?>
             </div>
-        </form>
+        </div>
 
-        <h3>Annonces récentes</h3>
-        <table>
-            <tr>
-                <th>ID</th>
-                <th>Titre</th>
-                <th>Type</th>
-                <th>Commune</th>
-                <th>Superficie</th>
-                <th>Photos</th>
-                <th>Actions</th>
-            </tr>
-            <?php foreach ($annonces as $a): ?>
-                <tr>
-                    <td><?= htmlspecialchars($a['id_biens']) ?></td>
-                    <td><?= htmlspecialchars($a['nom_biens']) ?></td>
-                    <td><?= htmlspecialchars($a['designation_type_bien'] ?? '') ?></td>
-                    <td><?= htmlspecialchars($a['nom_commune'] ?? '') ?></td>
-                    <td><?= htmlspecialchars($a['superficie_biens']) ?> m²</td>
-                    <td>
+        <div class="listings">
+            <h3><i class="fas fa-list"></i> Vos annonces récentes</h3>
+            <div class="listing-grid">
+                <?php foreach ($annonces as $a): ?>
+                    <div class="listing-card">
                         <?php
-                        $stmtp = $pdo->prepare('SELECT lien_photo FROM Photos WHERE id_biens = :id_biens');
+                        $stmtp = $pdo->prepare('SELECT lien_photo FROM Photos WHERE id_biens = :id_biens LIMIT 1');
                         $stmtp->execute([':id_biens' => $a['id_biens']]);
-                        $photos = $stmtp->fetchAll(PDO::FETCH_COLUMN);
-                        foreach ($photos as $p) {
-                            echo '<img src="/' . htmlspecialchars($p) . '" alt="photo" style="max-height:60px; margin-right:6px">';
-                        }
+                        $photo = $stmtp->fetch(PDO::FETCH_COLUMN);
                         ?>
-                    </td>
-                    <td>
-                        <form method="post" style="display:inline;">
-                            <input type="hidden" name="edit_mode" value="<?= htmlspecialchars($a['id_biens']) ?>">
-                            <button type="submit">Modifier</button>
-                        </form>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </table>
+                        <img src="<?= $photo ? '/Projet_HAP(House_After_Party)/' . htmlspecialchars($photo) : 'https://via.placeholder.com/300x200?text=No+Image' ?>" alt="Photo de l'annonce">
+                        <div class="content">
+                            <h4><?= htmlspecialchars($a['nom_biens']) ?></h4>
+                            <p><i class="fas fa-building"></i> <?= htmlspecialchars($a['designation_type_bien'] ?? 'Type non spécifié') ?></p>
+                            <p><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($a['nom_commune'] ?? 'Commune non spécifiée') ?></p>
+                            <p><i class="fas fa-ruler-combined"></i> <?= htmlspecialchars($a['superficie_biens']) ?> m²</p>
+                            <div class="actions">
+                                <form method="post" style="display:inline;">
+                                    <input type="hidden" name="edit_mode" value="<?= htmlspecialchars($a['id_biens']) ?>">
+                                    <button type="submit" class="btn">Modifier</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
     </div>
 </body>
 </html>
