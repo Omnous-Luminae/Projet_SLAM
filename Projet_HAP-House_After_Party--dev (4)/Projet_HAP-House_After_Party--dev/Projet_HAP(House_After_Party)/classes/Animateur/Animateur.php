@@ -34,7 +34,7 @@ public function setPasswordAnimateur($password_animateur) {$this->password_anima
 public function createAnimateur($nom_animateur, $prenom_animateur, $email_animateur, $password_animateur)
 {
     $stmt = $this->pdo->prepare(
-        "INSERT INTO Administateur (nom_administrateur, prenom_administrateur, email_administrateur, password_administrateur)
+        "INSERT INTO Animateur (nom_animateur, prenom_animateur, email_animateur, password_animateur)
         VALUES (:nom, :prenom, :email, :password)"
     );
     return $stmt->execute([
@@ -48,10 +48,10 @@ public function createAnimateur($nom_animateur, $prenom_animateur, $email_animat
 // AUTHENTICATE
 public function authenticateAnimateur($email, $password)
 {
-    $stmt = $this->pdo->prepare("SELECT * FROM Administateur WHERE email_administrateur = :email");
+    $stmt = $this->pdo->prepare("SELECT * FROM Animateur WHERE email_animateur = :email");
     $stmt->execute(['email' => $email]);
     $animateur = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($animateur && password_verify($password, $animateur['password_administrateur'])) {
+    if ($animateur && password_verify($password, $animateur['password_animateur'])) {
         return $animateur;
     }
     return false;

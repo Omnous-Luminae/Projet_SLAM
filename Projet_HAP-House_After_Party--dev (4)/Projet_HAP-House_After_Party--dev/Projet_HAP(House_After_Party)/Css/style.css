@@ -65,6 +65,53 @@ nav a.active, nav a:hover {
     color: #a100b8;
     border-color: #a100b8;
 }
+
+.btn-logout {
+    background: #dc3545;
+    color: #fff;
+    border: 1px solid #dc3545;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-logout:hover {
+    background: #c82333;
+    border-color: #bd2130;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-admin {
+    background: #28a745;
+    color: #fff;
+    border: 1px solid #28a745;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.btn-admin:hover {
+    background: #218838;
+    border-color: #1e7e34;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.welcome-msg {
+    color: #a100b8;
+    font-weight: 600;
+    margin-right: 15px;
+}
 .hero {
     background: linear-gradient(90deg, #a100b8 0%, #4b006e 100%);
     color: #fff;
@@ -339,4 +386,127 @@ footer {
 
 .auth-link a:hover {
     text-decoration: underline;
+}
+
+/* Form Sections Styles */
+.form-section {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(80,0,80,0.06);
+    padding: 24px;
+    margin-bottom: 20px;
+    border: 1px solid #eee;
+}
+
+.form-section h3 {
+    color: #a100b8;
+    margin-bottom: 16px;
+    font-size: 1.4em;
+    font-weight: 700;
+}
+
+.form-section form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.form-section input[type="text"],
+.form-section input[type="email"],
+.form-section input[type="password"],
+.form-section select,
+.form-section textarea {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1em;
+    transition: border-color 0.2s;
+}
+
+.form-section input[type="text"]:focus,
+.form-section input[type="email"]:focus,
+.form-section input[type="password"]:focus,
+.form-section select:focus,
+.form-section textarea:focus {
+    outline: none;
+    border-color: #a100b8;
+    box-shadow: 0 0 0 2px rgba(161, 0, 184, 0.1);
+}
+
+.form-section input[type="submit"],
+.form-section button {
+    background: #a100b8;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    align-self: flex-start;
+}
+
+.form-section input[type="submit"]:hover,
+.form-section button:hover {
+    background: #4b006e;
+}
+
+.form-section table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+}
+
+.form-section th,
+.form-section td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.form-section th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-section tr:hover {
+    background: #f8f9fa;
+}
+
+.form-section .success {
+    background: #d4edda;
+    color: #155724;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    border: 1px solid #c3e6cb;
+}
+
+.form-section .error {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    border: 1px solid #f5c6cb;
+}
+
+.form-section .saison-success {
+    background: #d4edda;
+    color: #155724;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    border: 1px solid #c3e6cb;
+}
+
+.form-section .saison-list {
+    margin-top: 20px;
+}
+
+.form-section .type-list {
+    margin-top: 20px;
 }
