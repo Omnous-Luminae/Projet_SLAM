@@ -1,4 +1,0 @@
-- [x] Remove photo upload section from Annonce.form.php
-- [x] Remove photo insertion code from announcement creation
-- [x] Update photo queries in listings and editing to use Photos table (lien_photo instead of chemin)
-- [x] Add note in form about separate photo upload via images/upphoto.php
