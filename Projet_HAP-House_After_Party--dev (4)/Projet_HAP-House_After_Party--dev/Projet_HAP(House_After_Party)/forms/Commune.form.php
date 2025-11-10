@@ -44,8 +44,18 @@ try {
             }
         }
 
-        // Récupération des communes 
-        $communes = $pdo->query('SELECT id_commune, code_insee, nom_commune, cp_commune FROM Commune ORDER BY nom_commune LIMIT 100')->fetchAll(PDO::FETCH_ASSOC);
+        // Pagination
+        $perPage = 50;
+        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $offset = ($page - 1) * $perPage;
+
+        // Récupération du nombre total de communes
+        $totalCommunes = $pdo->query('SELECT COUNT(*) FROM Commune')->fetchColumn();
+        $totalPages = ceil($totalCommunes / $perPage);
+
+        // Récupération des communes avec pagination
+        $communes = $pdo->query("SELECT id_commune, code_insee, nom_commune, cp_commune FROM Commune ORDER BY nom_commune LIMIT $perPage OFFSET $offset");
+        $communes = $communes->fetchAll(PDO::FETCH_ASSOC);
 
 
         if (isset($_GET['edit_id'])) {
@@ -56,8 +66,28 @@ try {
     $message = "Erreur : " . $e->getMessage();
 }
 ?>
+<a href="apropos.php" class="back-to-dashboard">Retour au Dashboard</a>
+<style>
+    .form-section { max-width: 800px; margin: 40px auto; background: #fff; border-radius: 18px; box-shadow: 0 2px 16px rgba(80,0,80,0.06); padding: 40px 30px; }
+    .form-section h3 { text-align: center; margin-bottom: 28px; }
+    .form-section .commune-list { margin-bottom: 20px; }
+    .form-section .commune-list table { border-collapse: collapse; width: 100%; }
+    .form-section .commune-list th, .form-section .commune-list td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
+    .form-section .commune-list th { background: #f3e6fa; }
+    .form-section .pagination { text-align: center; margin: 20px 0; }
+    .form-section .pagination-link { display: inline-block; padding: 8px 12px; margin: 0 4px; background: #a100b8; color: #fff; text-decoration: none; border-radius: 6px; }
+    .form-section .pagination-link:hover, .form-section .pagination-link.active { background: #4b006e; }
+    .form-section form { margin-top: 30px; }
+    .form-section label { display: block; margin-bottom: 5px; font-weight: 600; }
+    .form-section input[type="text"] { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 15px; }
+    .form-section button { background: #a100b8; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-weight: 600; cursor: pointer; }
+    .form-section button:hover { background: #4b006e; }
+    .form-section .success { color: green; text-align: center; margin-bottom: 18px; }
+    .back-to-dashboard { display: inline-block; margin: 20px; padding: 10px 20px; background: #a100b8; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; }
+    .back-to-dashboard:hover { background: #4b006e; }
+</style>
 <div class="form-section">
-    <h3>Liste des Communes (premières 100)</h3>
+    <h3>Liste des Communes (Page <?= $page ?> sur <?= $totalPages ?>)</h3>
         <?php if ($message): ?>
             <div class="success"><?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
@@ -78,6 +108,17 @@ try {
                     </tr>
                 <?php endforeach; ?>
             </table>
+        </div>
+        <div class="pagination">
+            <?php if ($page > 1): ?>
+                <a href="?page=<?= $page - 1 ?>" class="pagination-link">Précédent</a>
+            <?php endif; ?>
+            <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
+                <a href="?page=<?= $i ?>" class="pagination-link <?= $i == $page ? 'active' : '' ?>"><?= $i ?></a>
+            <?php endfor; ?>
+            <?php if ($page < $totalPages): ?>
+                <a href="?page=<?= $page + 1 ?>" class="pagination-link">Suivant</a>
+            <?php endif; ?>
         </div>
 
         <h2>Ajouter / Modifier une Commune</h2>
@@ -138,3 +179,4 @@ try {
             <button type="submit"><?= $editCommune ? 'Modifier' : 'Ajouter' ?> Commune</button>
         </form>
 </div>
+<script src="../js/confirm_delete.js"></script>

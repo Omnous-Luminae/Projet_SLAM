@@ -165,3 +165,18 @@ Create table if not exists Animateur(
     password_animateur varchar(255) not null
 );
 
+ALTER TABLE Biens
+ADD COLUMN created_by_id INT NULL AFTER id_type_biens,
+ADD COLUMN created_by_name VARCHAR(255) NULL AFTER created_by_id,
+ADD CONSTRAINT fk_biens_created_by FOREIGN KEY (created_by_id) REFERENCES Locataire(id_locataire);
+
+CREATE TABLE IF NOT EXISTS Reviews (
+  id_review INT AUTO_INCREMENT PRIMARY KEY,
+  id_biens INT NOT NULL,
+  id_locataire INT NULL,
+  rating TINYINT NULL,
+  content TEXT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_biens) REFERENCES Biens(id_biens) ON DELETE CASCADE
+);
+

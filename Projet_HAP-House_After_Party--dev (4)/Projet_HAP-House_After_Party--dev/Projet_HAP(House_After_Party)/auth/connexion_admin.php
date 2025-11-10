@@ -26,7 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_admin'])) {
                 $_SESSION['user_id'] = $animateur['id_animateur'];
                 $_SESSION['user_name'] = $animateur['nom_animateur'];
                 $_SESSION['role'] = 'animateur';
-                header('Location: ../../apropos.php');
+                $_SESSION['is_admin'] = true;
+                
+                // Rediriger vers la page précédente si elle existe, sinon vers l'accueil
+                $redirect_to = isset($_SESSION['redirect_after_login']) ? $_SESSION['redirect_after_login'] : '../../index.php';
+                unset($_SESSION['redirect_after_login']); // Nettoyer la session
+                header('Location: ' . $redirect_to);
                 exit;
             } else {
                 $message = "Email ou mot de passe incorrect.";
@@ -68,9 +73,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_admin'])) {
 
             <button type="submit" class="btn btn-primary connexion-btn" name="login_admin" value="Se connecter">Se connecter</button>
         </form>
-        <div class="auth-link">
-            <p>Pas encore de compte ? <a href="inscription_admin.php?key=admin_access_2023">Inscrivez-vous ici</a>.</p>
+            <div class="auth-link">
+                <p>Pas encore de compte ? <a href="inscription_admin.php?key=<?= $secret_key ?>">Inscrivez-vous ici</a>.</p>
+            </div>
         </div>
-    </div>
-</body>
+        <script>
+            // Stocke le fait que l'utilisateur s'est connecté en tant qu'admin dans la session
+            window.addEventListener('load', function() {
+                if (document.querySelector('form').classList.contains('auth-form')) {
+                    sessionStorage.setItem('isAdmin', 'true');
+                }
+            });
+        </script>
+    </body>
 </html>

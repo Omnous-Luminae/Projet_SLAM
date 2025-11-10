@@ -38,7 +38,7 @@ require_once 'Projet_HAP(House_After_Party)/config/db.php';
                     $locataires = $stmt->fetch()['total'];
 
                     // Nombre total de biens
-                    $stmt = $pdo->query("SELECT COUNT(*) as total FROM Bien");
+                    $stmt = $pdo->query("SELECT COUNT(*) as total FROM Biens");
                     $biens = $stmt->fetch()['total'];
 
                     // Nombre total de réservations

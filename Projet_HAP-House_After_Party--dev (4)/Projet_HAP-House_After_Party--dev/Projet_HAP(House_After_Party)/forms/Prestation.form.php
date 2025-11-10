@@ -24,6 +24,17 @@ try {
             $message = "Prestation supprimée avec succès.";
         }
 
+        // Modification d'une prestation
+        if (isset($_POST['edit_prestation']) && isset($_POST['id_prestation']) && isset($_POST['lib_prestation_edit'])) {
+            $id = intval($_POST['id_prestation']);
+            $lib = trim($_POST['lib_prestation_edit']);
+            if ($lib !== '') {
+                $stmt = $pdo->prepare('UPDATE Prestation SET lib_prestation = ? WHERE id_prestation = ?');
+                $stmt->execute([$lib, $id]);
+                $message = "Prestation modifiée avec succès.";
+            }
+        }
+
         // Récupération des prestations
         $prestations = $pdo->query('SELECT * FROM Prestation ORDER BY id_prestation DESC')->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -75,12 +86,29 @@ try {
                 <?php foreach ($prestations as $p): ?>
                     <tr>
                         <td><?= htmlspecialchars($p['id_prestation']) ?></td>
-                        <td><?= htmlspecialchars($p['lib_prestation']) ?></td>
                         <td>
-                            <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer cette prestation ?');">
-                                <input type="hidden" name="id_prestation" value="<?= htmlspecialchars($p['id_prestation']) ?>">
-                                <button type="submit" name="delete_prestation">Supprimer</button>
-                            </form>
+                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $p['id_prestation']): ?>
+                                <form method="post" style="display:inline;">
+                                    <input type="hidden" name="id_prestation" value="<?= htmlspecialchars($p['id_prestation']) ?>">
+                                    <input type="text" name="lib_prestation_edit" value="<?= htmlspecialchars($p['lib_prestation']) ?>" required>
+                                    <button type="submit" name="edit_prestation">Enregistrer</button>
+                                </form>
+                            <?php else: ?>
+                                <?= htmlspecialchars($p['lib_prestation']) ?>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $p['id_prestation']): ?>
+                            <?php else: ?>
+                                <form method="post" style="display:inline;">
+                                    <input type="hidden" name="edit_mode" value="<?= htmlspecialchars($p['id_prestation']) ?>">
+                                    <button type="submit">Modifier</button>
+                                </form>
+                                <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer cette prestation ?');">
+                                    <input type="hidden" name="id_prestation" value="<?= htmlspecialchars($p['id_prestation']) ?>">
+                                    <button type="submit" name="delete_prestation">Supprimer</button>
+                                </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -89,3 +117,4 @@ try {
     </div>
 </body>
 </html>
+<script src="../js/confirm_delete.js"></script>

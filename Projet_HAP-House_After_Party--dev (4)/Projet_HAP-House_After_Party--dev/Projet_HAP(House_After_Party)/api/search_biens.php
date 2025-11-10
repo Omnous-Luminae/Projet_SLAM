@@ -17,15 +17,15 @@ try {
         exit;
     }
 
-    $stmt = $pdo->prepare("SELECT id_commune, nom_commune FROM Commune WHERE LOWER(nom_commune) LIKE LOWER(?) ORDER BY nom_commune LIMIT 10");
+    $stmt = $pdo->prepare("SELECT id_biens, nom_biens FROM Biens WHERE LOWER(nom_biens) LIKE LOWER(?) ORDER BY nom_biens LIMIT 10");
     $stmt->execute(['%' . $query . '%']);
 
     $results = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $results[] = [
-            'id' => $row['id_commune'],
-            'label' => $row['nom_commune'],
-            'value' => $row['nom_commune']
+            'id' => $row['id_biens'],
+            'label' => $row['nom_biens'],
+            'value' => $row['nom_biens']
         ];
     }
 

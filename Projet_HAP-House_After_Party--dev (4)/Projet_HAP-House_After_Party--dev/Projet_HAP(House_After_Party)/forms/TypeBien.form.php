@@ -101,3 +101,5 @@ $typesBien = $typebienobj->readAllTypeBien();
             </table>
         </div>
 </div>
+
+<script src="../js/confirm_delete.js"></script>

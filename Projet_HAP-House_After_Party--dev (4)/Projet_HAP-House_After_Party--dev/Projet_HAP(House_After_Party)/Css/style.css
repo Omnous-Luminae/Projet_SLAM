@@ -213,6 +213,10 @@ nav a.active, nav a:hover {
 @media (max-width: 900px) {
     .cards { flex-direction: column; align-items: center; }
     .hero-bg { display: none; }
+    .hero .hero-btns { flex-direction: column; gap: 16px; }
+    .welcome-msg { display: none; } /* Hide welcome on mobile for space */
+    header { padding: 0 20px; height: auto; flex-wrap: wrap; }
+    nav { margin-top: 10px; }
 }
 .gallery-section {
     background: #f7f7f9;
@@ -240,6 +244,121 @@ nav a.active, nav a:hover {
 .gallery a img:hover {
     transform: scale(1.04);
 }
+/* Steps Section */
+.steps {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    margin-top: 40px;
+}
+
+.step {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 2px 8px rgba(80,0,80,0.06);
+    padding: 32px 28px;
+    width: 280px;
+    text-align: center;
+    position: relative;
+}
+
+.step-number {
+    background: #a100b8;
+    color: #fff;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 0 auto 20px auto;
+}
+
+.step h3 {
+    color: #a100b8;
+    margin-bottom: 12px;
+    font-size: 1.3em;
+}
+
+/* Destinations Section */
+.destinations {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-top: 40px;
+}
+
+.destination {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 2px 8px rgba(80,0,80,0.06);
+    overflow: hidden;
+    width: 300px;
+    text-align: center;
+}
+
+.destination img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.destination h3 {
+    color: #a100b8;
+    margin: 20px 0 10px 0;
+    font-size: 1.4em;
+}
+
+.destination p {
+    padding: 0 20px 20px 20px;
+    color: #666;
+}
+
+/* Testimonials Section */
+.testimonials {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-top: 40px;
+}
+
+.testimonial {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 2px 8px rgba(80,0,80,0.06);
+    padding: 32px 28px;
+    width: 320px;
+    position: relative;
+}
+
+.testimonial p {
+    font-style: italic;
+    color: #555;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.testimonial cite {
+    color: #a100b8;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.testimonial::before {
+    content: '"';
+    font-size: 4em;
+    color: #a100b8;
+    opacity: 0.2;
+    position: absolute;
+    top: 10px;
+    left: 20px;
+}
+
 footer {
     background: #fff;
     text-align: center;
@@ -506,6 +625,33 @@ footer {
 .form-section .saison-list {
     margin-top: 20px;
 }
+
+/* Small adjustments for annonce tarif spacing and pagination */
+.annonce-price {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(161,16,184,0.04);
+    font-weight: 700;
+}
+.annonce-price small, .annonce-price .tarif-meta {
+    font-weight: 500;
+    color: #555;
+    font-size: 0.9em;
+}
+
+.tarif-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pagination { display:flex; gap:8px; align-items:center; justify-content:center; margin-top:16px; }
+.pagination-btn { padding:6px 10px; border-radius:6px; text-decoration:none; background:#fff; border:1px solid #eee; color:#4b006e; }
+.pagination-btn.active { background:#a100b8; color:#fff; border-color:#a100b8; }
+.pagination-btn:hover { box-shadow:0 2px 8px rgba(80,0,80,0.06); }
 
 .form-section .type-list {
     margin-top: 20px;
