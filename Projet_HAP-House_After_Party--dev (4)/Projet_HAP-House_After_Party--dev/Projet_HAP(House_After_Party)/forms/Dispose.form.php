@@ -28,6 +28,18 @@ try {
             $message = "Disposition supprimée avec succès.";
         }
 
+        // Modification d'une disposition
+        if (isset($_POST['edit_dispose']) && isset($_POST['id_biens_edit']) && isset($_POST['id_pts_interet_edit']) && isset($_POST['distance_edit'])) {
+            $id_biens = intval($_POST['id_biens_edit']);
+            $id_pts_interet = intval($_POST['id_pts_interet_edit']);
+            $distance = trim($_POST['distance_edit']);
+            if ($distance !== '') {
+                $stmt = $pdo->prepare('UPDATE Dispose SET distance = ? WHERE id_biens = ? AND id_pts_interet = ?');
+                $stmt->execute([$distance, $id_biens, $id_pts_interet]);
+                $message = "Disposition modifiée avec succès.";
+            }
+        }
+
         // Récupération des dispositions
         $disposes = $pdo->query('SELECT d.*, b.nom_biens, p.lib_pts_interet FROM Dispose d LEFT JOIN Biens b ON d.id_biens = b.id_biens LEFT JOIN Pts_Interet p ON d.id_pts_interet = p.id_pts_interet ORDER BY d.id_biens, d.id_pts_interet')->fetchAll(PDO::FETCH_ASSOC);
 
@@ -97,13 +109,31 @@ try {
                     <tr>
                         <td><?= htmlspecialchars($d['nom_biens']) ?></td>
                         <td><?= htmlspecialchars($d['lib_pts_interet']) ?></td>
-                        <td><?= htmlspecialchars($d['distance']) ?></td>
                         <td>
-                            <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer cette disposition ?');">
-                                <input type="hidden" name="id_biens_del" value="<?= htmlspecialchars($d['id_biens']) ?>">
-                                <input type="hidden" name="id_pts_interet_del" value="<?= htmlspecialchars($d['id_pts_interet']) ?>">
-                                <button type="submit" name="delete_dispose">Supprimer</button>
-                            </form>
+                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $d['id_biens'] . '-' . $d['id_pts_interet']): ?>
+                                <form method="post" style="display:inline;">
+                                    <input type="hidden" name="id_biens_edit" value="<?= htmlspecialchars($d['id_biens']) ?>">
+                                    <input type="hidden" name="id_pts_interet_edit" value="<?= htmlspecialchars($d['id_pts_interet']) ?>">
+                                    <input type="text" name="distance_edit" value="<?= htmlspecialchars($d['distance']) ?>" required>
+                                    <button type="submit" name="edit_dispose">Enregistrer</button>
+                                </form>
+                            <?php else: ?>
+                                <?= htmlspecialchars($d['distance']) ?>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $d['id_biens'] . '-' . $d['id_pts_interet']): ?>
+                            <?php else: ?>
+                                <form method="post" style="display:inline;">
+                                    <input type="hidden" name="edit_mode" value="<?= htmlspecialchars($d['id_biens'] . '-' . $d['id_pts_interet']) ?>">
+                                    <button type="submit">Modifier</button>
+                                </form>
+                                <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer cette disposition ?');">
+                                    <input type="hidden" name="id_biens_del" value="<?= htmlspecialchars($d['id_biens']) ?>">
+                                    <input type="hidden" name="id_pts_interet_del" value="<?= htmlspecialchars($d['id_pts_interet']) ?>">
+                                    <button type="submit" name="delete_dispose">Supprimer</button>
+                                </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -112,3 +142,4 @@ try {
     </div>
 </body>
 </html>
+<script src="../js/confirm_delete.js"></script>

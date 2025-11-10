@@ -27,6 +27,22 @@ try {
             $message = "Point d'intérêt supprimé avec succès.";
         }
 
+        // Modification d'un point d'intérêt
+        if (isset($_POST['edit_pts_interet']) && isset($_POST['id_pts_interet'])) {
+            $id = intval($_POST['id_pts_interet']);
+            $lib = trim($_POST['lib_pts_interet_edit'] ?? '');
+            $desc = trim($_POST['description_pts_interet_edit'] ?? '');
+            $id_type = intval($_POST['id_type_points_interet_edit'] ?? 0);
+
+            if ($lib && $desc && $id_type) {
+                $stmt = $pdo->prepare('UPDATE Pts_Interet SET lib_pts_interet = ?, description_pts_interet = ?, id_type_points_interet = ? WHERE id_pts_interet = ?');
+                $stmt->execute([$lib, $desc, $id_type, $id]);
+                $message = "Point d'intérêt modifié avec succès.";
+            } else {
+                $message = "Veuillez remplir tous les champs obligatoires.";
+            }
+        }
+
         // Récupération des points d'intérêt
         $pts_interets = $pdo->query('SELECT p.*, t.lib_type_points_interet FROM Pts_Interet p LEFT JOIN Type_Pts_Interet t ON p.id_type_points_interet = t.id_type_points_interet ORDER BY p.id_pts_interet DESC')->fetchAll(PDO::FETCH_ASSOC);
 
@@ -81,30 +97,67 @@ try {
             <input type="submit" name="add_pts_interet" value="Ajouter">
         </form>
         <div class="pts-list">
-            <table>
-                <tr>
-                    <th>ID</th>
-                    <th>Nom</th>
-                    <th>Description</th>
-                    <th>Type</th>
-                    <th>Actions</th>
-                </tr>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <div>
+                    <input id="pts-search" type="text" placeholder="Rechercher un point d'intérêt..." style="padding:8px;border-radius:6px;border:1px solid #ccc;min-width:260px;">
+                </div>
+                <div style="font-size:0.9em;color:#666;">Total : <?= count($pts_interets) ?></div>
+            </div>
+
+            <div class="pts-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
                 <?php foreach ($pts_interets as $p): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($p['id_pts_interet']) ?></td>
-                        <td><?= htmlspecialchars($p['lib_pts_interet']) ?></td>
-                        <td><?= htmlspecialchars($p['description_pts_interet']) ?></td>
-                        <td><?= htmlspecialchars($p['lib_type_points_interet']) ?></td>
-                        <td>
-                            <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce point d\'intérêt ?');">
+                    <div class="pts-card" data-title="<?= htmlspecialchars($p['lib_pts_interet']) ?>" data-type="<?= htmlspecialchars($p['lib_type_points_interet']) ?>" style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,0.04);position:relative;">
+                        <h3 style="margin:0 0 8px 0;font-size:1.05em;"><?= htmlspecialchars($p['lib_pts_interet']) ?></h3>
+                        <div style="font-size:0.85em;color:#777;margin-bottom:8px;"><strong>Type:</strong> <?= htmlspecialchars($p['lib_type_points_interet']) ?></div>
+                        <div class="desc" style="max-height:52px;overflow:hidden;color:#444;"><?= nl2br(htmlspecialchars($p['description_pts_interet'])) ?></div>
+                        <button type="button" class="toggle-desc" style="margin-top:8px;background:none;border:none;color:#a100b8;cursor:pointer;padding:0;">Voir plus</button>
+
+                        <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
+                            <form method="post" style="display:inline;margin:0;">
                                 <input type="hidden" name="id_pts_interet" value="<?= htmlspecialchars($p['id_pts_interet']) ?>">
-                                <button type="submit" name="delete_pts_interet">Supprimer</button>
+                                <button type="submit" name="edit_mode" value="<?= htmlspecialchars($p['id_pts_interet']) ?>" style="background:#fff;border:1px solid #a100b8;color:#a100b8;padding:6px 10px;border-radius:6px;">Modifier</button>
                             </form>
-                        </td>
-                    </tr>
+                            <form method="post" style="display:inline;margin:0;" onsubmit="return confirm('Supprimer ce point d\'intérêt ?');">
+                                <input type="hidden" name="id_pts_interet" value="<?= htmlspecialchars($p['id_pts_interet']) ?>">
+                                <button type="submit" name="delete_pts_interet" style="background:#a100b8;border:none;color:#fff;padding:6px 10px;border-radius:6px;">Supprimer</button>
+                            </form>
+                        </div>
+                    </div>
                 <?php endforeach; ?>
-            </table>
+            </div>
         </div>
     </div>
 </body>
 </html>
+<script src="../js/confirm_delete.js"></script>
+<script>
+    (function(){
+        const search = document.getElementById('pts-search');
+        if (!search) return;
+        const cards = Array.from(document.querySelectorAll('.pts-card'));
+        search.addEventListener('input', function() {
+            const q = this.value.trim().toLowerCase();
+            cards.forEach(c => {
+                const title = (c.getAttribute('data-title')||'').toLowerCase();
+                const type = (c.getAttribute('data-type')||'').toLowerCase();
+                const match = title.includes(q) || type.includes(q);
+                c.style.display = match ? '' : 'none';
+            });
+        });
+
+        // Toggle description
+        document.querySelectorAll('.toggle-desc').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const card = this.closest('.pts-card');
+                const desc = card.querySelector('.desc');
+                if (desc.style.maxHeight && desc.style.maxHeight !== '52px') {
+                    desc.style.maxHeight = '52px';
+                    this.textContent = 'Voir plus';
+                } else {
+                    desc.style.maxHeight = 'none';
+                    this.textContent = 'Voir moins';
+                }
+            });
+        });
+    })();
+</script>

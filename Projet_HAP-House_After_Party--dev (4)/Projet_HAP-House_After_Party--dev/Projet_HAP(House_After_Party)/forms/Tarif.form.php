@@ -79,48 +79,27 @@ try {
             <input type="number" name="annee_tarif" placeholder="Année" min="2020" required>
             <input type="number" step="0.01" name="tarif" placeholder="Tarif (€)" min="0" required>
             <select name="id_saison" required>
-                <option value="">-- Saison --</option>
-                <?php foreach ($saisons as $s): ?>
-                    <option value="<?= $s['id_saison'] ?>"><?= htmlspecialchars($s['lib_saison']) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <select name="id_biens" required>
-                <option value="">-- Bien --</option>
-                <?php foreach ($biens as $b): ?>
-                    <option value="<?= $b['id_biens'] ?>"><?= htmlspecialchars($b['nom_biens']) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <input type="submit" name="add_tarif" value="Ajouter">
-        </form>
-        <div class="tarif-list">
-            <table>
-                <tr>
-                    <th>ID</th>
-                    <th>Semaine</th>
-                    <th>Année</th>
-                    <th>Tarif (€)</th>
-                    <th>Saison</th>
-                    <th>Bien</th>
-                    <th>Actions</th>
-                </tr>
-                <?php foreach ($tarifs as $t): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($t['id_Tarif']) ?></td>
-                        <td><?= htmlspecialchars($t['semaine_Tarif']) ?></td>
-                        <td><?= htmlspecialchars($t['année_Tarif']) ?></td>
-                        <td><?= htmlspecialchars($t['tarif']) ?></td>
-                        <td><?= htmlspecialchars($t['lib_saison']) ?></td>
-                        <td><?= htmlspecialchars($t['nom_biens']) ?></td>
-                        <td>
-                            <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce tarif ?');">
-                                <input type="hidden" name="id_tarif" value="<?= htmlspecialchars($t['id_Tarif']) ?>">
-                                <button type="submit" name="delete_tarif">Supprimer</button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
-        </div>
-    </div>
-</body>
-</html>
+
+                <!DOCTYPE html>
+                <html lang="fr">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Gestion des Tarifs</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+                    <style>
+                        body { font-family: 'Montserrat', Arial, sans-serif; background: #f7f7f9; margin: 0; }
+                        .container { max-width: 600px; margin: 80px auto; background: #fff; border-radius: 18px; box-shadow: 0 2px 16px rgba(80,0,80,0.06); padding: 40px 30px; text-align: center; }
+                        h2 { margin-bottom: 28px; }
+                        .back-link { display: block; margin-bottom: 18px; color: #a100b8; text-decoration: none; font-weight: 600; }
+                        .back-link:hover { text-decoration: underline; }
+                        .info { color: #a100b8; font-size: 1.2em; margin-top: 40px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
+                        <h2>Gestion des Tarifs</h2>
+                        <div class="info">Ce formulaire n'est plus disponible pour les utilisateurs.<br>Veuillez contacter l'administrateur si besoin.</div>
+                    </div>
+                </body>
+                </html>

@@ -51,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_animateur'])
 </head>
 <body>
     <div class="auth-container">
+        <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
         <h2>Inscription Administrateur</h2>
         <?php if ($message): ?>
             <div class="message <?php echo strpos($message, 'réussie') !== false ? 'success' : 'error'; ?>">
@@ -81,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_animateur'])
             <button type="submit" name="register_animateur" class="btn btn-primary">S'inscrire</button>
         </form>
         <div class="auth-link">
-            <p>Déjà un compte ? <a href="connexion_admin.php">Connectez-vous ici</a>.</p>
+            <p>Déjà un compte ? <a href="connexion_admin.php?key=admin_access_2023">Connectez-vous ici</a>.</p>
         </div>
     </div>
 </body>
