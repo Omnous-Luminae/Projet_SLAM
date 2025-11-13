@@ -9,13 +9,15 @@ Class Tarif{
     private $semaine_tarif = "";
     private $annee_tarif = "";
     private $tarif = "";
+    private $id_saison = "";
     private $pdo;
 
-    public function __construct($id_tarif, $semaine_tarif, $annee_tarif, $tarif, $pdo){
+    public function __construct($id_tarif, $semaine_tarif, $annee_tarif, $tarif, $id_saison, $pdo){
         $this->id_tarif = $id_tarif;
         $this->semaine_tarif = $semaine_tarif;
         $this->annee_tarif = $annee_tarif;
         $this->tarif = $tarif;
+        $this->id_saison = $id_saison;
         $this->pdo = $pdo;
     }
 
@@ -28,13 +30,15 @@ Class Tarif{
     public function setAnneeTarif($annee_tarif) { $this->annee_tarif = $annee_tarif; }
     public function setTarif($tarif) { $this->tarif = $tarif; }
 
-    public function createTarif($semaine_tarif, $annee_tarif, $tarif)
+    public function createTarif($id_biens, $semaine_tarif, $annee_tarif, $tarif, $id_saison)
     {
-        $stmt = $this->pdo->prepare("INSERT INTO Tarif (semaine_tarif, annee_tarif, tarif) VALUES (:semaine, :annee, :tarif)");
+        $stmt = $this->pdo->prepare("INSERT INTO Tarif (id_biens, semaine_Tarif, année_Tarif, tarif, id_saison) VALUES (:id_biens, :semaine, :annee, :tarif, :id_saison)");
         return $stmt->execute([
+            'id_biens' => $id_biens,
             'semaine' => $semaine_tarif,
             'annee' => $annee_tarif,
-            'tarif' => $tarif
+            'tarif' => $tarif,
+            'id_saison' => $id_saison
         ]);
     }
 
@@ -70,6 +74,23 @@ Class Tarif{
     {
         $stmt = $this->pdo->prepare("DELETE FROM Tarif WHERE id_tarif = :id");
         return $stmt->execute(['id' => $id]);
+    }
+
+    // READ (by bien)
+    public function getTarifsByBien($id_biens)
+    {
+        $stmt = $this->pdo->prepare("SELECT t.*, s.lib_saison FROM Tarif t LEFT JOIN Saison s ON t.id_saison = s.id_saison WHERE t.id_biens = :id_biens ORDER BY t.année_Tarif DESC, t.semaine_Tarif ASC");
+        $stmt->execute(['id_biens' => $id_biens]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // READ (latest by bien)
+    public function getLatestTarifByBien($id_biens)
+    {
+        $stmt = $this->pdo->prepare("SELECT tarif FROM Tarif WHERE id_biens = :id_biens ORDER BY année_Tarif DESC, semaine_Tarif DESC LIMIT 1");
+        $stmt->execute(['id_biens' => $id_biens]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ? $result['tarif'] : 0;
     }
 }
 
