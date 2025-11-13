@@ -87,3 +87,70 @@ function initReservationBiensAutocomplete() {
 function initEditBiensAutocomplete() {
     initBiensAutocomplete("#edit_biens_input", "#edit_biens_id");
 }
+
+// Autocomplete functionality for compositions (prestations)
+function initCompositionAutocomplete(selector, hiddenSelector) {
+    $(selector).autocomplete({
+        source: function(request, response) {
+            $.ajax({
+                url: "../api/search_composition.php",
+                dataType: "json",
+                data: {
+                    q: request.term
+                },
+                success: function(data) {
+                    response(data);
+                }
+            });
+        },
+        minLength: 2,
+        select: function(event, ui) {
+            $(selector).val(ui.item.label);
+            $(hiddenSelector).val(ui.item.id);
+            return false;
+        }
+    });
+
+    $(selector).on('input', function() {
+        $(hiddenSelector).val('');
+    });
+}
+
+// Initialize autocomplete for composition in add form
+function initAddCompositionAutocomplete() {
+    // Apply to all composition inputs dynamically added
+    $(document).on('focus', 'input[name*="[label]"]', function() {
+        const $input = $(this);
+        const index = $input.attr('name').match(/\[(\d+)\]/)[1];
+        const hiddenName = `composition[${index}][id_prestation]`;
+        if (!$input.data('autocomplete-initialized')) {
+            $input.autocomplete({
+                source: function(request, response) {
+                    $.ajax({
+                        url: "../api/search_composition.php",
+                        dataType: "json",
+                        data: {
+                            q: request.term
+                        },
+                        success: function(data) {
+                            response(data);
+                        }
+                    });
+                },
+                minLength: 2,
+                select: function(event, ui) {
+                    $input.val(ui.item.label);
+                    // Add hidden input if not exists
+                    let $hidden = $input.siblings(`input[name="${hiddenName}"]`);
+                    if ($hidden.length === 0) {
+                        $hidden = $('<input type="hidden" name="' + hiddenName + '">');
+                        $input.after($hidden);
+                    }
+                    $hidden.val(ui.item.id);
+                    return false;
+                }
+            });
+            $input.data('autocomplete-initialized', true);
+        }
+    });
+}
