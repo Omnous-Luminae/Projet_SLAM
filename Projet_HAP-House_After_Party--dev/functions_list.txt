@@ -1,0 +1,295 @@
+<?php
+/**
+ * Liste des fonctions utilisées dans le programme Projet_HAP (House After Party)
+ *
+ * Ce fichier contient toutes les fonctions identifiées dans le projet, avec une explication de leur rôle et leur provenance (fichier ou extension).
+ */
+
+// ================================================================================
+// I. FONCTIONS JAVASCRIPT DÉCLARÉES (Fichiers du projet)
+// ================================================================================
+
+// 1. createPopupContent(b)
+//    - Rôle: Génère le contenu HTML pour les popups des marqueurs de biens (affichage nom, commune, superficie, couchages, description, lien vers annonce).
+//    - Provenance: map.php
+
+// 2. createPopupContentPtsInteret(p)
+//    - Rôle: Génère le contenu HTML pour les popups des marqueurs de points d'intérêt (affichage nom, commune, type, description).
+//    - Provenance: map.php
+
+// 3. addBiensMarkers(items)
+//    - Rôle: Ajoute les marqueurs pour les biens sur la carte Leaflet avec gestion des popups et événements hover.
+//    - Provenance: map.php
+
+// 4. clearClose()
+//    - Rôle: Annule le timeout de fermeture automatique des popups (fonction interne).
+//    - Provenance: map.php
+
+// 5. addPtsInteretMarkers(items)
+//    - Rôle: Ajoute les marqueurs pour les points d'intérêt sur la carte Leaflet avec gestion des popups et événements hover.
+//    - Provenance: map.php
+
+// 6. restoreViewFromParams()
+//    - Rôle: Restaure la vue de la carte et ouvre un marqueur spécifique basé sur les paramètres URL.
+//    - Provenance: map.php
+
+// 7. toggleLocataireFields()
+//    - Rôle: Bascule l'affichage des champs selon le type de locataire (physique/moral).
+//    - Provenance: forms/Locataires.form.php
+
+// 8. openEditModal(...)
+//    - Rôle: Ouvre la modal d'édition pour un locataire ou une réservation avec pré-remplissage des champs.
+//    - Provenance: forms/Locataires.form.php, forms/Reservation.form.php
+
+// 9. closeEditModal()
+//    - Rôle: Ferme la modal d'édition des locataires.
+//    - Provenance: forms/Locataires.form.php
+
+// 10. deleteLocataire(id, nom)
+//     - Rôle: Supprime un locataire après confirmation utilisateur.
+//     - Provenance: forms/Locataires.form.php
+
+// 11. toggleMoraleFields(...)
+//     - Rôle: Bascule l'affichage des champs spécifiques aux personnes morales (utilisé dans l'inscription et l'édition de locataires).
+//     - Provenance: forms/Locataires.form.php, auth/inscription.php
+
+// 12. closeModal()
+//     - Rôle: Ferme la modal d'édition des réservations.
+//     - Provenance: forms/Reservation.form.php
+
+// 13. createPhotoRow(index)
+//     - Rôle: Génère une ligne HTML pour l'ajout d'une photo dans le formulaire d'annonce.
+//     - Provenance: forms/Annonce.form.php
+
+// ================================================================================
+// II. MÉTHODES DE CLASSES PHP (Fichiers du projet)
+// ================================================================================
+
+// Les méthodes suivantes sont des constructeurs, getters, setters et méthodes CRUD (Create, Read, Update, Delete)
+// pour les classes de votre projet.
+
+// CLASSE Animateur (classes/Animateur/Animateur.php)
+// __construct, getIdAnimateur, getNomAnimateur, getPrenomAnimateur, getEmailAnimateur, getPasswordAnimateur, setNomAnimateur, setPrenomAnimateur, setEmailAnimateur, setPasswordAnimateur, createAnimateur, authenticateAnimateur, getAllAnimateurs, getAnimateurById, updateAnimateur, deleteAnimateur
+
+// CLASSE Biens (classes/Biens/Biens.php)
+// __construct, getIdBiens, getNomBiens, getRueBiens, getSuperficieBiens, getDescriptionBiens, getAnimalBiens, getNbCouchage, setNomBiens, setRueBiens, setSuperficieBiens, setDescriptionBiens, setAnimalBiens, setNbCouchage, createBiens, getAllBiens, getBiensById, updateBiens, deleteBiens, getCreatedBy, setCreatedBy, getHidden, setHidden
+
+// CLASSE Commune (classes/Commune/Commune.php)
+// __construct, getIdCommune, getCodeInsee, getNomCommune, getCpCommune, getLatCommune, getLongCommune, getVilleSlug, getVilleNomReel, getVilleNomSoundex, getVilleNomMetaphone, getVilleDepartement, getVilleArrondissement, getVilleCanton, getVilleCodeCommune, getVilleCommune, getVilleSurface, getVilleZmin, getVilleZmax, setNomCommune, setCpCommune, setLatCommune, setLongCommune, setVilleSurface, setVilleZmin, setVilleZmax, createCommune, getAllCommune, getCommuneById, updateCommune, deleteCommune
+
+// CLASSE Compose (classes/Compose/Compose.php)
+// __construct, getQuantite, setQuantite, addCompose, deleteCompose, getByBien, getByPrestation
+
+// CLASSE Dispose (classes/Dispose/Dispose.php)
+// __construct, getDistance, setDistance, addDispose, deleteDispose, getByPointInteret, getByBien
+
+// CLASSE Evenement (classes/Evenement/Evenement.php)
+// __construct, getIdEvenement, getNomEvenement, getDescriptionEvenement, getDateDebutEvenement, getDateFinEvenement, setNomEvenement, setDescriptionEvenement, setDateDebutEvenement, setDateFinEvenement, addEvenement, readAllEvenement, readIdEvenement, updateEvenement, deleteEvenement
+
+// CLASSE Locataire (classes/Locataire/Locataire.php)
+// __construct, getIdLocataire, getNomLocataire, getPrenomLocataire, getEmailLocataire, getTelLocataire, getDateNaissanceLocataire, getMdpLocataire, getRueLocataire, getComplementRueLocataire, setNomLocataire, setPrenomLocataire, setEmailLocataire, setTelLocataire, setDateNaissanceLocataire, setMdpLocataire, setRueLocataire, setComplementRueLocataire, createLocataire, getAllLocataire, getLocataireById, updateLocataire, deleteLocataire, authenticateLocataire
+
+// CLASSE Personne_Morale (classes/Locataire/Personne_Morale/Personne_Morale.php)
+// __construct, getSiret, setSiret, getRaisonSociale, setRaisonSociale
+
+// CLASSE Prestation (classes/Prestation/Prestation.php)
+// __construct, getidprestation, getlibprestation, setlibprestation, addPrestation, readAllPrestation, readIdPrestation, updatePrestation, deletePrestation
+
+// CLASSE PtsInteret (classes/Pts_Interet/PtsInteret.php)
+// __construct, getIdPtsInteret, getLibPtsInteret, getDescriptionPtsInteret, getIdTypePointsInteret, setLibPtsInteret, setDescription, createPtsInteret, getAllPtsInteret, getPtsInteretById, updatePtsInteret, deletePtsInteret
+
+// CLASSE Reservation (classes/Reservation/Reservation.php)
+// __construct, getIdReservation, getDateDebutReservation, getDateFinReservation, setDateDebutReservation, setDateFinReservation, addReservation, readAllReservation, readIdReservation, updateReservation, deleteReservation
+
+// CLASSE Saison (classes/Saison/Saison.php)
+// __construct, getIdSaison, getlibSaison, setlibSaison, createSaison, readAllSaison, readSaisonById, updateSaison, deleteSaison
+
+// CLASSE Tarif (classes/Tarif/Tarif.php)
+// __construct, getIdTarif, getSemaineTarif, getAnneeTarif, getTarif, setSemaineTarif, setAnneeTarif, setTarif, createTarif, getAllTarif, getTarifById, updateTarif, deleteTarif, getTarifsByBien, getLatestTarifByBien
+
+// CLASSE TypeBien (classes/Type_Bien/TypeBien.php)
+// __construct, getIdTypeBien, getLibTypeBien, setLibTypeBien, createTypeBien, readAllTypeBien, readTypeBienById, updateTypeBien, deleteTypeBien
+
+// CLASSE TypeEvenement (classes/Type_Evenement/TypeEvenement.php)
+// __construct, getIdTypeEvenement, getLibTypeEvenement, setLibTypeEvenement, createTypeEvenement, readAllTypeEvenement, readTypeEvenementById, updateTypeEvenement, deleteEvenement
+
+// CLASSE TypePtsInteret (classes/Type_Pts_Interet/TypePtsInteret.php)
+// __construct, getIdTypePointsInteret, getLibTypePointsInteret, setLibTypePointsInteret, createTypePtsInteret, readAllTypePtsInteret, readTypePtsInteretById, update, deleteTypePtsInteret
+
+// ================================================================================
+// III. FONCTIONS PHP APPELÉES (Built-in / Extensions / Librairies)
+// ================================================================================
+
+// --- Fonctions PHP intégrées (Built-in) ---
+// Rôle: Fonctions de base du langage PHP.
+// Provenance: PHP Core
+
+// array_column: Retourne les valeurs d'une seule colonne dans le tableau d'entrée.
+// array_key_exists: Vérifie si une clé ou un index existe dans un tableau.
+// basename: Retourne le nom de la composante finale d'un chemin.
+// bin2hex: Convertit des données binaires en leur représentation hexadécimale.
+// ceil: Arrondit au nombre supérieur.
+// count: Compte le nombre d'éléments dans un tableau ou un objet.
+// ctype_digit: Vérifie si tous les caractères de la chaîne sont des chiffres.
+// date: Formate une date et une heure locales.
+// dirname: Retourne le nom du chemin du dossier parent.
+// explode: Coupe une chaîne en plusieurs morceaux.
+// filter_var: Filtre une variable avec un filtre spécifique.
+// floatval: Retourne la valeur flottante d'une variable.
+// hash: Génère une valeur de hachage (checksum).
+// header: Envoie un en-tête HTTP brut.
+// htmlspecialchars: Convertit les caractères spéciaux en entités HTML.
+// http_response_code: Obtient ou définit le code de réponse HTTP.
+// implode: Rassemble les éléments d'un tableau en une chaîne.
+// in_array: Vérifie si une valeur existe dans un tableau.
+// intval: Retourne la valeur entière d'une variable.
+// is_array: Détermine si une variable est un tableau.
+// is_dir: Détermine si un nom de fichier est un dossier.
+// is_uploaded_file: Détermine si un fichier a été téléchargé via HTTP POST.
+// json_encode: Retourne la représentation JSON d'une valeur.
+// mail: Envoie un email.
+// md5: Calcule le hachage md5 d'une chaîne.
+// mkdir: Crée un dossier.
+// move_uploaded_file: Déplace un fichier téléchargé.
+// nl2br: Insère des sauts de ligne HTML avant toutes les nouvelles lignes.
+// number_format: Formate un nombre avec des milliers groupés.
+// password_hash: Crée un hachage de mot de passe.
+// password_verify: Vérifie si un mot de passe correspond à un hachage.
+// pathinfo: Retourne des informations sur un chemin de fichier.
+// preg_match: Effectue une recherche d'expression rationnelle.
+// preg_replace: Effectue une recherche et un remplacement d'expression rationnelle.
+// rand: Génère un nombre entier aléatoire.
+// random_bytes: Génère des octets pseudo-aléatoires cryptographiquement sûrs.
+// round: Arrondit un nombre flottant.
+// session_destroy: Détruit toutes les données enregistrées dans une session.
+// session_start: Démarre une nouvelle session ou reprend une session existante.
+// str_ireplace: Version insensible à la casse de str_replace.
+// str_repeat: Répète une chaîne.
+// strlen: Retourne la taille d'une chaîne.
+// strpos: Trouve la position de la première occurrence d'une sous-chaîne.
+// strtolower: Convertit une chaîne en minuscules.
+// strtotime: Analyse une chaîne de caractères représentant une date/heure.
+// substr: Retourne un segment de chaîne.
+// time: Retourne l'heure courante.
+// trim: Supprime les espaces (ou d'autres caractères) en début et fin de chaîne.
+// uniqid: Génère un identifiant unique.
+// urlencode: Encode une chaîne pour l'utiliser dans une URL.
+
+// --- Fonctions de l'extension PDO (PHP Data Objects) ---
+// Rôle: Interaction avec la base de données.
+// Provenance: Extension PDO
+
+// fetch: Récupère la ligne suivante d'un jeu de résultats PDO.
+// fetchAll: Retourne un tableau contenant toutes les lignes du jeu de résultats.
+// fetchColumn: Retourne une seule colonne de la ligne suivante d'un jeu de résultats.
+// lastInsertId: Retourne l'identifiant de la dernière ligne insérée.
+// prepare: Prépare une requête pour l'exécution.
+// query: Exécute une requête SQL.
+// execute: Exécute une requête préparée.
+// errorInfo: Retourne les informations d'erreur pour la dernière opération.
+
+// --- Fonctions SQL (utilisées dans les requêtes) ---
+// Rôle: Opérations au niveau de la base de données (SGBD).
+// Provenance: SGBD (MySQL, PostgreSQL, etc.)
+
+// AND: Opérateur logique.
+// AVG: Fonction d'agrégation pour la moyenne.
+// CONCAT: Concatène plusieurs chaînes.
+// COUNT: Fonction d'agrégation pour le nombre de lignes.
+// IN: Opérateur de comparaison.
+// JOIN: Combine des lignes de deux ou plusieurs tables.
+// LOWER: Convertit une chaîne en minuscules.
+// MIN: Fonction d'agrégation pour la valeur minimale.
+// NOW: Retourne la date et l'heure courantes du SGBD.
+// VALUES: Utilisé dans les instructions INSERT.
+// VARCHAR: Type de données chaîne de caractères.
+// WHERE: Clause de filtrage.
+
+// ================================================================================
+// IV. FONCTIONS JAVASCRIPT APPELÉES (Built-in / Librairies)
+// ================================================================================
+
+// --- Fonctions JavaScript intégrées (Built-in) ---
+// Rôle: Fonctions de base du langage JavaScript.
+// Provenance: JavaScript Core
+
+// alert: Affiche une boîte de dialogue d'alerte.
+// confirm: Affiche une boîte de dialogue de confirmation.
+// encodeURIComponent: Encode un composant URI.
+// isNaN: Détermine si une valeur est NaN (Not-a-Number).
+// parseFloat: Analyse un argument (chaîne) et retourne un nombre à virgule flottante.
+// parseInt: Analyse un argument (chaîne) et retourne un nombre entier.
+// setTimeout: Appelle une fonction ou évalue une expression après un nombre spécifié de millisecondes.
+// toISOString: Retourne une chaîne de date au format ISO.
+// toLowerCase: Convertit une chaîne en minuscules.
+
+// --- Fonctions DOM/Standard ---
+// Rôle: Manipulation du Document Object Model (DOM).
+// Provenance: Navigateur Web
+
+// addEventListener: Attache un gestionnaire d'événement à un élément.
+// append: Insère un ensemble d'objets Node ou de chaînes de caractères après le dernier enfant de l'Element.
+// appendChild: Ajoute un nœud à la fin de la liste des enfants d'un nœud spécifié.
+// change: Événement déclenché lorsque la valeur d'un élément est modifiée.
+// click: Événement déclenché lorsqu'un élément est cliqué.
+// closest: Retourne le parent le plus proche qui correspond au sélecteur CSS.
+// contains: Retourne un booléen indiquant si un nœud est un descendant d'un autre.
+// createElement: Crée un élément HTML spécifié.
+// getAttribute: Retourne la valeur de l'attribut spécifié sur l'élément.
+// getElementById: Retourne une référence à l'élément par son ID.
+// querySelector: Retourne le premier élément correspondant à un sélecteur CSS.
+// querySelectorAll: Retourne tous les éléments correspondant à un sélecteur CSS.
+// remove: Supprime l'élément du DOM.
+// setAttribute: Définit la valeur d'un attribut sur l'élément spécifié.
+// setItem: Stocke une valeur dans le localStorage.
+// show: Affiche un élément (souvent via jQuery).
+// submit: Événement déclenché lorsqu'un formulaire est soumis.
+// toggle: Bascule l'état d'un élément (affichage, classe, etc.).
+// val: Obtient ou définit la valeur d'un élément de formulaire (souvent via jQuery).
+
+// --- Fonctions de la librairie Leaflet.js ---
+// Rôle: Création et manipulation de cartes interactives.
+// Provenance: Leaflet.js
+
+// L.map: Crée une instance de carte Leaflet.
+// L.tileLayer: Ajoute une couche de tuiles (carte de base) à la carte.
+// L.layerGroup: Crée un groupe de couches pour gérer plusieurs marqueurs.
+// L.circleMarker: Crée un marqueur circulaire sur la carte.
+// map.addLayer: Ajoute une couche à la carte.
+// map.addTo: Ajoute la carte à un conteneur HTML.
+// map.getBounds: Retourne les limites actuelles de la vue de la carte.
+// map.getCenter: Retourne le centre actuel de la carte.
+// map.getZoom: Retourne le niveau de zoom actuel de la carte.
+// map.on: Attache un gestionnaire d'événement à la carte.
+// marker.bindPopup: Attache une popup à un marqueur.
+// marker.closePopup: Ferme la popup d'un marqueur.
+// marker.openPopup: Ouvre la popup d'un marqueur.
+// map.setView: Définit la vue (centre et zoom) de la carte.
+// map.setMaxBounds: Définit les limites maximales de la carte.
+// map.clearLayers: Supprime toutes les couches d'un groupe de couches.
+
+// --- Fonctions de la librairie jQuery (ou similaires) ---
+// Rôle: Simplification de la manipulation du DOM, des événements et des requêtes AJAX.
+// Provenance: jQuery (ou framework similaire)
+
+// ajax: Effectue une requête HTTP asynchrone (AJAX).
+// attr: Obtient ou définit la valeur d'un attribut.
+// data: Stocke des données arbitraires associées aux éléments.
+// error: Gestionnaire d'erreur pour les requêtes AJAX.
+// find: Obtient les descendants de chaque élément de l'ensemble actuel d'éléments correspondants.
+// hide: Masque les éléments correspondants.
+// ready: Spécifie une fonction à exécuter lorsque le DOM est complètement chargé.
+// successCallback: Fonction de rappel en cas de succès d'une requête AJAX.
+// then: Ajoute des gestionnaires pour les promesses (utilisé avec fetch ou ajax).
+// val: Obtient ou définit la valeur d'un élément de formulaire.
+
+// ================================================================================
+// V. FONCTIONS GLOBALES PHP DÉCLARÉES (Fichiers du projet)
+// ================================================================================
+
+// Aucune fonction globale PHP n'a été détectée en dehors des méthodes de classes.
+
+// ================================================================================
+// FIN DU FICHIER
+// ================================================================================
+?>
