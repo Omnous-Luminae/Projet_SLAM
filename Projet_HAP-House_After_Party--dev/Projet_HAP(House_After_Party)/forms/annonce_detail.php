@@ -69,6 +69,31 @@ try {
         'default' => '#add8e6' // Light blue default
     ];
 
+        // Fonction helper pour obtenir le tarif automatiquement basé sur les dates
+        function getAutoTarif($pdo, $id_bien, $date_debut) {
+            // Convertir la date au numéro de semaine ISO
+            $dt = new DateTime($date_debut);
+            $week = intval($dt->format('W'));
+            $year = intval($dt->format('Y'));
+            
+            // Chercher un tarif spécial pour cette semaine
+            $stmt = $pdo->prepare('SELECT id_Tarif FROM Tarif WHERE id_biens = ? AND semaine_Tarif = ? AND année_Tarif = ? LIMIT 1');
+            $stmt->execute([$id_bien, $week, $year]);
+            $specialTarif = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($specialTarif) {
+                return $specialTarif['id_Tarif'];
+            }
+            
+            // Si pas de tarif spécial, retourner le premier tarif disponible
+            // (fallback - normalement il devrait y avoir un tarif par défaut)
+            $stmt = $pdo->prepare('SELECT id_Tarif FROM Tarif WHERE id_biens = ? LIMIT 1');
+            $stmt->execute([$id_bien]);
+            $fallbackTarif = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            return $fallbackTarif ? $fallbackTarif['id_Tarif'] : 1; // Retourner 1 par défaut
+        }
+
         // Ajout d'une réservation
         if (isset($_POST['add_reservation'])) {
             if (!isset($_SESSION['user_id'])) {
@@ -78,15 +103,111 @@ try {
             $date_debut = trim($_POST['date_debut'] ?? '');
             $date_fin = trim($_POST['date_fin'] ?? '');
             $id_locataire = intval($_SESSION['user_id']);
-            $id_tarif = intval($_POST['id_tarif'] ?? 0);
+            $id_tarif_input = trim($_POST['id_tarif'] ?? '');
+            
+            // Si le tarif est "auto", le calculer automatiquement
+            if ($id_tarif_input === 'auto') {
+                $id_tarif = getAutoTarif($pdo, $id_bien, $date_debut);
+            } else {
+                $id_tarif = intval($id_tarif_input);
+            }
 
             if ($date_debut && $date_fin && $id_locataire && $id_tarif) {
-                $stmt = $pdo->prepare('INSERT INTO Reservation (date_debut_reservation, date_fin_reservation, id_locataire, id_biens, id_Tarif) VALUES (?, ?, ?, ?, ?)');
-                $stmt->execute([$date_debut, $date_fin, $id_locataire, $id_bien, $id_tarif]);
-                header('Location: annonce_detail.php?id=' . $id_bien . '&reservation=success');
-                exit;
+                // Validate dates: cannot reserve before today, and end >= start
+                try {
+                    $dtStart = new DateTime($date_debut);
+                    $dtEnd = new DateTime($date_fin);
+                    $today = new DateTime();
+                    $today->setTime(0,0,0);
+
+                    if ($dtStart < $today) {
+                        $message = "La date de début doit être aujourd'hui ou ultérieure.";
+                    } elseif ($dtEnd < $dtStart) {
+                        $message = "La date de fin doit être postérieure ou égale à la date de début.";
+                    } else {
+                        // Server-side overlap check with existing reservations for this bien
+                        $overlapStmt = $pdo->prepare('SELECT 1 FROM Reservation WHERE id_biens = ? AND NOT (date_fin_reservation < ? OR date_debut_reservation > ?) LIMIT 1');
+                        $overlapStmt->execute([$id_bien, $date_debut, $date_fin]);
+                        $overlap = $overlapStmt->fetchColumn();
+                        if ($overlap) {
+                            $message = 'Les dates choisies se chevauchent avec une réservation existante.';
+                        } else {
+                            // Check unavailable weeks table if exists
+                            try {
+                                // Build unique year-week pairs between start and end
+                                $pairs = [];
+                                $d = clone $dtStart;
+                                while ($d <= $dtEnd) {
+                                    $w = intval($d->format('W'));
+                                    $y = intval($d->format('Y'));
+                                    $key = $y . '-' . $w;
+                                    if (!isset($pairs[$key])) { $pairs[$key] = ['annee' => $y, 'semaine' => $w]; }
+                                    $d->modify('+1 day');
+                                }
+
+                                if (!empty($pairs)) {
+                                    $conds = [];
+                                    $params = [$id_bien];
+                                    foreach ($pairs as $p) {
+                                        $conds[] = '(annee = ? AND semaine = ?)';
+                                        $params[] = $p['annee'];
+                                        $params[] = $p['semaine'];
+                                    }
+                                    $sql = 'SELECT 1 FROM semaine_indisponible WHERE id_biens = ? AND (' . implode(' OR ', $conds) . ') LIMIT 1';
+                                    $uStmt = $pdo->prepare($sql);
+                                    $uStmt->execute($params);
+                                    $blocked = $uStmt->fetchColumn();
+                                    if ($blocked) {
+                                        $message = 'Les dates sélectionnées comprennent des semaines marquées comme indisponibles.';
+                                    }
+                                }
+                            } catch (Exception $e) {
+                                // If table missing or error, continue — previously we used Biens.unavailable_weeks client-side
+                            }
+                        }
+
+                        if (empty($message)) {
+                            $stmt = $pdo->prepare('INSERT INTO Reservation (date_debut_reservation, date_fin_reservation, id_locataire, id_biens, id_Tarif) VALUES (?, ?, ?, ?, ?)');
+                            $stmt->execute([$date_debut, $date_fin, $id_locataire, $id_bien, $id_tarif]);
+                            header('Location: annonce_detail.php?id=' . $id_bien . '&reservation=success');
+                            exit;
+                        }
+                    }
+                } catch (Exception $e) {
+                    $message = "Format de date invalide.";
+                }
             } else {
                 $message = "Tous les champs sont requis.";
+            }
+        }
+
+        // Annuler une réservation (utilisateur courant ou admin)
+        if (isset($_POST['cancel_reservation']) && isset($_POST['id_reservation'])) {
+            if (!isset($_SESSION['user_id'])) {
+                header('Location: ../auth/connexion.php');
+                exit;
+            }
+            $id_res = intval($_POST['id_reservation']);
+            $currentUser = intval($_SESSION['user_id']);
+            $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'animateur';
+
+            if ($isAdmin) {
+                $stmt = $pdo->prepare('DELETE FROM Reservation WHERE id_reservation = ?');
+                $stmt->execute([$id_res]);
+                header('Location: annonce_detail.php?id=' . $id_bien . '&canceled=1');
+                exit;
+            } else {
+                $stmtCheck = $pdo->prepare('SELECT id_locataire FROM Reservation WHERE id_reservation = ?');
+                $stmtCheck->execute([$id_res]);
+                $row = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+                if ($row && intval($row['id_locataire']) === $currentUser) {
+                    $stmt = $pdo->prepare('DELETE FROM Reservation WHERE id_reservation = ?');
+                    $stmt->execute([$id_res]);
+                    header('Location: annonce_detail.php?id=' . $id_bien . '&canceled=1');
+                    exit;
+                } else {
+                    $message = 'Action non autorisée.';
+                }
             }
         }
 
@@ -141,7 +262,7 @@ try {
                             if (in_array($fileExtension, $allowedExtensions)) {
                                 $newFileName = uniqid('img_', true) . '.' . $fileExtension;
                                 $destPath = $uploadDir . $newFileName;
-                                $lienPhoto = 'Projet_HAP(House_After_Party)/images/uploads/' . $newFileName;
+                                $lienPhoto = 'images/uploads/' . $newFileName;
                                 if (move_uploaded_file($tmpName, $destPath)) {
                                     $stmtPhoto = $pdo->prepare('INSERT INTO Photos (nom_photos, lien_photo, id_biens) VALUES (?, ?, ?)');
                                     $stmtPhoto->execute([$fileName, $lienPhoto, $id_bien]);
@@ -209,10 +330,17 @@ try {
         }
         // Handle review submission
         if (isset($_POST['submit_review'])) {
+            // Vérifier que l'utilisateur est connecté
+            if (!isset($_SESSION['user_id'])) {
+                header('Location: ../auth/connexion.php');
+                exit;
+            }
+            
             $reviewBienId = intval($_POST['review_bien_id'] ?? 0);
             $rating = intval($_POST['rating'] ?? 0);
             $content = trim($_POST['content'] ?? '');
-            $userId = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
+            $userId = intval($_SESSION['user_id']);
+            
             if ($reviewBienId > 0 && ($rating > 0 || $content !== '')) {
                 $ins = $pdo->prepare('INSERT INTO Reviews (id_biens, id_locataire, rating, content, created_at) VALUES (?, ?, ?, ?, NOW())');
                 $ins->execute([$reviewBienId, $userId, $rating > 0 ? $rating : null, $content]);
@@ -225,6 +353,15 @@ try {
     }
 } catch (Exception $e) {
     $message = "Erreur : " . $e->getMessage();
+}
+
+// Vérifier si l'utilisateur peut poster un avis (réservation passée obligatoire)
+$canPostReview = false;
+if (isset($_SESSION['user_id'])) {
+    $userId = intval($_SESSION['user_id']);
+    $stmt = $pdo->prepare('SELECT 1 FROM Reservation WHERE id_locataire = ? AND id_biens = ? AND date_fin_reservation < NOW() LIMIT 1');
+    $stmt->execute([$userId, $id_bien]);
+    $canPostReview = (bool)$stmt->fetchColumn();
 }
 ?>
 <!DOCTYPE html>
@@ -278,9 +415,12 @@ try {
         <?php if ($photos): ?>
             <div class="image-gallery">
                 <?php foreach ($photos as $photo): ?>
-                    <?php $photoLabel = trim(str_ireplace('photo', '', $photo['nom_photos'])); ?>
-                    <a href="/<?= htmlspecialchars($photo['lien_photo']) ?>" data-lightbox="gallery" data-title="<?= htmlspecialchars($photoLabel) ?>">
-                        <img src="/<?= htmlspecialchars($photo['lien_photo']) ?>" alt="<?= htmlspecialchars($bien['nom_biens']) ?>" class="gallery-image">
+                    <?php
+                    $photoLabel = trim(str_ireplace('photo', '', $photo['nom_photos']));
+                    $photoPath = '/' . $photo['lien_photo'];
+                    ?>
+                    <a href="<?= htmlspecialchars($photoPath) ?>" data-lightbox="gallery" data-title="<?= htmlspecialchars($photoLabel) ?>">
+                        <img src="<?= htmlspecialchars($photoPath) ?>" alt="<?= htmlspecialchars($bien['nom_biens']) ?>" class="gallery-image">
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -292,54 +432,8 @@ try {
             </div>
         <?php endif; ?>
 
-        <?php if (!empty($reviews)): ?>
-            <div class="reviews" style="margin-top:20px;">
-                <h3>Avis des utilisateurs</h3>
-                <?php foreach ($reviews as $rev): ?>
-                    <div class="review-item" style="border-bottom:1px solid #eee;padding:8px 0;">
-                        <div style="font-weight:600;">
-                            <?php
-                            $displayName = '';
-                            if (isset($_SESSION['user_id']) && $rev['id_locataire'] == $_SESSION['user_id']) {
-                                $displayName = $_SESSION['user_name'];
-                            } else {
-                                $displayName = $rev['nom_locataire'] ? $rev['nom_locataire'] . ' ' . ($rev['prenom_locataire'] ?? '') : 'Anonyme';
-                            }
-                            echo htmlspecialchars($displayName);
-                            ?>
-                        </div>
-                        <div style="color:#f39c12;"><?= str_repeat('★', intval($rev['rating'])) . str_repeat('☆', 5 - intval($rev['rating'])) ?></div>
-                        <div style="margin-top:6px;"><?= nl2br(htmlspecialchars($rev['content'])) ?></div>
-                        <div style="font-size:0.85em;color:#888;margin-top:6px;">Posté le <?= htmlspecialchars(date('d-m-Y à H:i', strtotime($rev['created_at']))) ?></div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-
-        <!-- Formulaire d'ajout d'un avis -->
-        <div class="form-section" style="margin-top:20px;">
-            <h3>Laisser un avis</h3>
-            <form method="post">
-                <input type="hidden" name="review_bien_id" value="<?= htmlspecialchars($id_bien) ?>">
-                <div class="form-group">
-                    <label for="review_rating">Note :</label>
-                    <div id="review_rating">
-                        <?php for ($r = 5; $r >= 1; $r--): ?>
-                            <label style="margin-right:6px;"><input type="radio" name="rating" value="<?= $r ?>"> <?= $r ?> ★</label>
-                        <?php endfor; ?>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="review_content">Votre avis:</label>
-                    <textarea id="review_content" name="content" rows="4" style="width:100%;"></textarea>
-                </div>
-                <div class="form-group">
-                    <button type="submit" name="submit_review">Envoyer l'avis</button>
-                </div>
-            </form>
-        </div>
-
-    <div class="annonce-details">
+        <!-- Détails de l'annonce -->
+        <div class="annonce-details">
             <div class="detail-section">
                 <h3>Caractéristiques</h3>
                 <div class="detail-item">
@@ -391,40 +485,85 @@ try {
                     </div>
                 <?php endif; ?>
                 <div class="tarif-section">
-                    <h4>Tarifs disponibles</h4>
+                    <h4>Réservation</h4>
+                    <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">Sélectionnez vos dates sur le calendrier ci-dessous. Le tarif sera calculé automatiquement selon vos dates.</p>
+                    
                     <?php if ($tarifs): ?>
-                        <select id="tarif-select" name="id_tarif" required>
-                            <option value="">-- Sélectionnez un tarif --</option>
-                            <?php foreach ($tarifs as $tarif): ?>
-                                <option value="<?= htmlspecialchars($tarif['id_Tarif']) ?>">
-                                    Semaine <?= htmlspecialchars($tarif['semaine_Tarif']) ?> - <?= htmlspecialchars($tarif['année_Tarif']) ?> - <?= htmlspecialchars($tarif['lib_saison']) ?> : €<?= number_format($tarif['tarif'], 2) ?>/nuit
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <!-- Afficher les semaines spéciales -->
+                        <div id="special-weeks-section" style="background: #f9f9f9; padding: 12px; border-radius: 4px; margin-bottom: 15px; display: none;">
+                            <h5 style="margin-top: 0; font-size: 0.95em;">Semaines spéciales (tarifs différents des tarifs par défaut):</h5>
+                            <div id="special-weeks-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; font-size: 0.85em;">
+                            </div>
+                        </div>
+        
+                        <!-- Le tarif est calculé automatiquement selon les saisons; l'utilisateur ne choisit pas le tarif -->
+        
+                        <!-- Formulaire de réservation -->
                         <div id="reservation-form" style="display: none; margin-top: 15px;">
                             <form method="post">
-                                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                    <input type="date" id="date_debut" name="date_debut" placeholder="Date début" required>
-                                    <input type="date" id="date_fin" name="date_fin" placeholder="Date fin" required>
-                                    <input type="hidden" name="id_tarif" id="hidden_id_tarif">
-                                    <button type="submit" name="add_reservation" class="reserve-btn">Confirmer la réservation</button>
+                                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+                                    <input type="date" id="date_debut" name="date_debut" placeholder="Date début" required min="<?= date('Y-m-d') ?>">
+                                    <input type="date" id="date_fin" name="date_fin" placeholder="Date fin" required min="<?= date('Y-m-d') ?>">
+                                    <input type="hidden" name="id_tarif" id="hidden_id_tarif" value="auto">
                                 </div>
+                
+                                <!-- Aperçu du coût -->
+                                <div id="cost-preview" style="background: #e8f5e9; padding: 15px; border-radius: 4px; border: 1px solid #81c784; margin-bottom: 15px; display: none;">
+                                    <h5 style="margin-top: 0; font-size: 0.95em; color: #2e7d32;">Récapitulatif du tarif</h5>
+                                    <div id="cost-breakdown" style="font-size: 0.85em; margin-bottom: 12px;">
+                                    </div>
+                                    <div style="font-weight: bold; font-size: 1.1em; color: #1b5e20;">
+                                        Montant total : <span id="total-cost">0,00</span> €
+                                    </div>
+                                </div>
+                
+                                <button type="submit" name="add_reservation" class="reserve-btn" id="confirm-btn">Confirmer la réservation</button>
                             </form>
-
                         </div>
                     <?php else: ?>
-                        <p>Aucun tarif disponible pour ce bien.</p>
+                        <p style="color: #d32f2f; font-weight: 500;">Aucun tarif disponible pour ce bien.</p>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
 
+        <?php
+            // Afficher les réservations du user pour ce bien (avec bouton annuler)
+            if (isset($_SESSION['user_id'])) {
+                $currentUserId = intval($_SESSION['user_id']);
+                $stmtMyRes = $pdo->prepare('SELECT id_reservation, date_debut_reservation, date_fin_reservation FROM Reservation WHERE id_biens = ? AND id_locataire = ? ORDER BY id_reservation DESC');
+                $stmtMyRes->execute([$id_bien, $currentUserId]);
+                $myReservations = $stmtMyRes->fetchAll(PDO::FETCH_ASSOC);
+                if (!empty($myReservations)) {
+        ?>
+                    <div class="my-reservations" style="margin-top:18px;">
+                        <h4>Vos réservations pour ce bien</h4>
+                        <ul style="list-style:none;padding:0;">
+                            <?php foreach ($myReservations as $r): ?>
+                                <li style="margin-bottom:8px;">
+                                    <strong><?= htmlspecialchars($r['date_debut_reservation']) ?> → <?= htmlspecialchars($r['date_fin_reservation']) ?></strong>
+                                    <form method="post" style="display:inline;margin-left:10px;" onsubmit="return confirm('Voulez-vous annuler cette réservation ?');">
+                                        <input type="hidden" name="id_reservation" value="<?= intval($r['id_reservation']) ?>">
+                                        <button type="submit" name="cancel_reservation" class="reserve-btn" style="background:#d32f2f;border:none;padding:6px 10px;color:#fff;border-radius:6px;">Annuler la réservation</button>
+                                    </form>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+        <?php
+                }
+            }
+        ?>
+
         <?php if ($canEdit): ?>
         <div class="actions">
-            <button type="button" id="edit-btn" class="reserve-btn">Modifier cette annonce</button>
-            <form method="post" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?');">
-                <button type="submit" name="delete_bien">Supprimer cette annonce</button>
-            </form>
+            <?php if ($canEdit): ?>
+                <button type="button" id="edit-btn" class="reserve-btn">Modifier cette annonce</button>
+                <a href="manage_tarifs.php?id_bien=<?= htmlspecialchars($id_bien) ?>" class="reserve-btn" style="display:inline-block;text-decoration:none;">Gérer tarifs & disponibilités</a>
+                <form method="post" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?');">
+                    <button type="submit" name="delete_bien">Supprimer cette annonce</button>
+                </form>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 
@@ -538,6 +677,110 @@ try {
             <h3>Calendrier des disponibilités</h3>
             <div id="calendar" style="max-width: 900px; margin: 0 auto;"></div>
         </div>
+
+        <!-- AVIS (Reviews) à la toute fin -->
+        <section class="reviews-section" style="margin-top:48px;">
+            <h3>Avis des locataires</h3>
+            <form method="get" style="margin-bottom:18px;display:flex;gap:12px;align-items:center;">
+                <input type="hidden" name="id" value="<?= $id_bien ?>">
+                <label>Filtrer par note :</label>
+                <select name="filter_note" onchange="this.form.submit()">
+                    <option value="">Toutes</option>
+                    <?php for($i=5;$i>=1;$i--): ?>
+                        <option value="<?= $i ?>" <?= (isset($_GET['filter_note']) && $_GET['filter_note']==$i)?'selected':''; ?>><?= $i ?> ★</option>
+                    <?php endfor; ?>
+                </select>
+            </form>
+            <?php
+            $filteredReviews = $reviews;
+            if (isset($_GET['filter_note']) && in_array($_GET['filter_note'], ['1','2','3','4','5'])) {
+                $filteredReviews = array_filter($reviews, function($r) {
+                    return intval($r['rating']) == intval($_GET['filter_note']);
+                });
+            }
+            ?>
+            <?php if (!empty($filteredReviews)): ?>
+                <div class="reviews-list">
+                    <?php foreach ($filteredReviews as $rev): ?>
+                        <div class="review-card" style="border:1px solid #eee;padding:12px;margin-bottom:12px;border-radius:6px;">
+                            <div style="font-weight:600;margin-bottom:6px;">
+                                <?= htmlspecialchars($rev['prenom_locataire'] . ' ' . strtoupper(substr($rev['nom_locataire'],0,1)).'.') ?>
+                            </div>
+                            <div style="color:#f39c12;margin-bottom:6px;">
+                                <?= str_repeat('★', intval($rev['rating'])) . str_repeat('☆', 5 - intval($rev['rating'])) ?>
+                            </div>
+                            <div style="margin-bottom:6px;"><?= nl2br(htmlspecialchars($rev['content'])) ?></div>
+                            <div style="font-size:0.85em;color:#888;">Posté le <?= htmlspecialchars(date('d-m-Y à H:i', strtotime($rev['created_at']))) ?></div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <p>Aucun avis pour ce bien.</p>
+            <?php endif; ?>
+
+            <?php if ($canPostReview): ?>
+            <div class="review-form-block" style="margin-top:32px;">
+                <h4>Laisser un avis</h4>
+                <form method="post" class="review-form">
+                    <input type="hidden" name="review_bien_id" value="<?= $id_bien ?>">
+                    <div class="form-group">
+                        <label for="rating">Note</label>
+                        <select name="rating" id="rating" required>
+                            <option value="">Choisir une note</option>
+                            <?php for($i=5;$i>=1;$i--): ?>
+                                <option value="<?= $i ?>"><?= $i ?> ★</option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="content">Commentaire</label>
+                        <textarea name="content" id="content" rows="3" maxlength="500" style="width:100%;"></textarea>
+                    </div>
+                    <button type="submit" name="submit_review" class="profile-button">Publier mon avis</button>
+                </form>
+            </div>
+            <?php elseif(isset($_SESSION['user_id'])): ?>
+                <p style="color:#888;">Vous devez avoir réservé et terminé un séjour pour ce bien pour pouvoir laisser un avis.</p>
+            <?php else: ?>
+                <p style="color:#888;">Connectez-vous pour laisser un avis.</p>
+            <?php endif; ?>
+        </section>
+
+        <!-- Calendrier des indisponibilités (réservations) pour tous, même déconnecté -->
+        <section class="calendar-section" style="margin-top:48px;">
+            <h3>Indisponibilités (réservations)</h3>
+            <div id="calendar" style="max-width:700px;margin:0 auto 32px auto;"></div>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var calendarEl = document.getElementById('calendar');
+                var calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    locale: 'fr',
+                    height: 480,
+                    events: [
+                        <?php
+                        $stmt = $pdo->prepare('SELECT date_debut_reservation, date_fin_reservation FROM Reservation WHERE id_biens = ?');
+                        $stmt->execute([$id_bien]);
+                        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $resa) {
+                            $start = htmlspecialchars($resa['date_debut_reservation']);
+                            $end = htmlspecialchars($resa['date_fin_reservation']);
+                            echo "{ start: '$start', end: '$end', display: 'background', color: '#a100b8', title: 'Indisponible' },\n";
+                        }
+                        ?>
+                    ],
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: ''
+                    },
+                    selectable: false,
+                    editable: false,
+                    eventDisplay: 'block',
+                });
+                calendar.render();
+            });
+            </script>
+        </section>
     </div>
 
     <!-- jQuery -->
@@ -547,16 +790,7 @@ try {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#tarif-select').change(function() {
-                var selectedTarif = $(this).val();
-                if (selectedTarif) {
-                    $('#reservation-form').show();
-                    $('#hidden_id_tarif').val(selectedTarif);
-                } else {
-                    $('#reservation-form').hide();
-                    $('#hidden_id_tarif').val('');
-                }
-            });
+            // Removed: tarif-select change handler (now handled by calendar selection)
 
             $('#edit-btn').click(function() {
                 $('#edit-form').toggle();
@@ -665,12 +899,117 @@ try {
     </script>
     <script src="../js/confirm_delete.js"></script>
     <script>
+        // Global array to hold tariff data (special weeks)
+        var tariffData = <?= json_encode($tarifs) ?>;
+        
+        // Function to display special weeks
+        function displaySpecialWeeks() {
+            if (!tariffData || tariffData.length === 0) return;
+            
+            var specialWeeksHtml = '';
+            tariffData.forEach(function(tarif) {
+                specialWeeksHtml += '<div style="background: white; padding: 8px; border-left: 4px solid #1976d2; border-radius: 2px;">' +
+                    '<strong>Semaine ' + tarif.semaine_Tarif + ' (' + tarif.lib_saison + ')</strong> : ' +
+                    '<span style="color: #1976d2; font-weight: bold;">€' + parseFloat(tarif.tarif).toFixed(2) + '</span>/nuit' +
+                    '</div>';
+            });
+            
+            $('#special-weeks-list').html(specialWeeksHtml);
+            $('#special-weeks-section').show();
+        }
+        
+        // Function to calculate cost
+        function calculateCost() {
+            var dateDebut = document.getElementById('date_debut').value;
+            var dateFin = document.getElementById('date_fin').value;
+            
+            if (!dateDebut || !dateFin) {
+                $('#cost-preview').hide();
+                $('#confirm-btn').hide();
+                return;
+            }
+            
+            // Call the cost calculation API
+            fetch('../api/calculate_reservation_cost.php?id_bien=<?= $id_bien ?>&date_debut=' + dateDebut + '&date_fin=' + dateFin)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Erreur : ' + data.error);
+                        return;
+                    }
+                    
+                    // Display breakdown
+                    var breakdownHtml = '';
+                    var previousWeek = null;
+                    
+                    data.details.forEach(function(detail, index) {
+                        var weekLabel = 'Semaine ' + detail.week;
+                        var rateInfo = detail.is_special ? 
+                            '(tarif spécial, ' + detail.saison + ')' : 
+                            '(tarif par défaut, ' + detail.saison + ')';
+                        
+                        breakdownHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #c8e6c9;">' +
+                            '<div>' +
+                                '<strong>' + weekLabel + '</strong> ' + rateInfo +
+                                '<br><small style="color: #558b2f;">' + detail.nights + ' nuit(s) × €' + parseFloat(detail.price_per_night).toFixed(2) + '/nuit</small>' +
+                            '</div>' +
+                            '<div style="font-weight: 500; color: #1976d2;">€' + parseFloat(detail.subtotal).toFixed(2) + '</div>' +
+                            '</div>';
+                    });
+                    
+                    $('#cost-breakdown').html(breakdownHtml);
+                    $('#total-cost').text(parseFloat(data.total).toFixed(2).replace('.', ','));
+                    $('#cost-preview').show();
+                    $('#confirm-btn').show();
+                    
+                    // Set the hidden tarif field - we'll use a special flag "auto" since we compute it server-side
+                    document.getElementById('hidden_id_tarif').value = 'auto';
+                })
+                .catch(error => {
+                    console.error('Erreur lors du calcul du coût:', error);
+                    alert('Erreur lors du calcul du montant.');
+                });
+        }
+        
+        // Set up event listeners for date inputs
+        document.getElementById('date_debut').addEventListener('change', calculateCost);
+        document.getElementById('date_fin').addEventListener('change', calculateCost);
+        
+        // Display special weeks on page load
+        displaySpecialWeeks();
+        
+            // Handle tarif select for manual selection
+            // '#tarif-select' removed: tarif is auto-calculated (hidden_id_tarif = 'auto')
+            // Ensure date inputs have min today in case server-side rendering differs
+            (function setDateInputMin() {
+                var today = new Date().toISOString().split('T')[0];
+                var d1 = document.getElementById('date_debut');
+                var d2 = document.getElementById('date_fin');
+                if (d1) d1.setAttribute('min', today);
+                if (d2) d2.setAttribute('min', today);
+            })();
+    </script>
+    <script>
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
+            var today = new Date();
+            var todayStr = today.toISOString().split('T')[0];
             var reservedDates = new Set();
+            var unavailableWeeks = new Set();
+            // Inject CSS to force visibility for unavailable weeks
+            (function(){
+                var s = document.createElement('style');
+                s.type = 'text/css';
+                s.textContent = '\n                    .fc-daygrid-day.fc-unavailable-week { background: linear-gradient(135deg,#ffb3b3,#ff6666) !important; color: #fff !important; }\n                    .fc-daygrid-day.fc-unavailable-week .fc-daygrid-day-number { color: #fff !important; font-weight: 800; }\n                    .fc-event.unavailable-week { background: #ff6666 !important; border-color: #cc0000 !important; color: #fff !important; font-weight: 800 !important; }\n                    .fc-event.unavailable-week .fc-event-title { text-transform: uppercase; }\n                ';
+                document.head.appendChild(s);
+            })();
+
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'fr',
+                selectable: true,
+                validRange: { start: todayStr },
+                selectMinDistance: 0,
                 events: function(fetchInfo, successCallback, failureCallback) {
                     fetch('../api/get_reservations_bien.php?id_bien=<?= $id_bien ?>')
                         .then(response => response.json())
@@ -690,6 +1029,11 @@ try {
                                 let end = new Date(reservation.end);
                                 for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
                                     reservedDates.add(d.toISOString().split('T')[0]);
+                                    // Also mark unavailable weeks
+                                    if (reservation.className === 'unavailable-week') {
+                                        let weekNum = Math.ceil((d - new Date(d.getFullYear(), 0, 1)) / 86400000 / 7);
+                                        unavailableWeeks.add(weekNum);
+                                    }
                                 }
                             });
                             successCallback(events);
@@ -699,6 +1043,44 @@ try {
                             failureCallback(error);
                         });
                 },
+                eventDidMount: function(info) {
+                    try {
+                        var evt = info.event;
+                        var el = info.el;
+                        var isUnavailable = evt.classNames && evt.classNames.indexOf('unavailable-week') !== -1;
+                        if (isUnavailable) {
+                            // Strong inline styles for the event element
+                            el.style.backgroundColor = '#ff6666';
+                            el.style.borderColor = '#cc0000';
+                            el.style.color = '#ffffff';
+                            el.style.fontWeight = '700';
+                            // add badge to title if possible
+                            var titleEl = el.querySelector('.fc-event-title');
+                            if (titleEl && !titleEl.querySelector('.fc-unavail-badge')) {
+                                var badge = document.createElement('span');
+                                badge.className = 'fc-unavail-badge';
+                                badge.textContent = ' ⚠️ INDISPONIBLE';
+                                badge.style.cssText = 'background:#cc0000;color:#fff;padding:2px 6px;margin-left:6px;border-radius:4px;font-size:0.75em;';
+                                titleEl.appendChild(badge);
+                            }
+
+                            // Mark day cells in the range as unavailable (adds class to day cells)
+                            var start = evt.start;
+                            var end = evt.end;
+                            if (start && end) {
+                                var d = new Date(start);
+                                while (d < end) {
+                                    var dateStr = d.toISOString().split('T')[0];
+                                    var dayEl = document.querySelector('.fc-daygrid-day[data-date="' + dateStr + '"]');
+                                    if (dayEl) dayEl.classList.add('fc-unavailable-week');
+                                    d.setDate(d.getDate() + 1);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('eventDidMount error', e);
+                    }
+                },
                 dayCellDidMount: function(info) {
                     if (reservedDates.has(info.dateStr)) {
                         var dayNumberEl = info.el.querySelector('.fc-daygrid-day-number');
@@ -706,6 +1088,57 @@ try {
                             dayNumberEl.style.textDecoration = 'line-through';
                         }
                     }
+                },
+                select: function(info) {
+                    // Check if selection includes unavailable dates
+                    var start = new Date(info.startStr);
+                    var end = new Date(info.endStr);
+                    var hasUnavailable = false;
+                    
+                    for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+                        let dateStr = d.toISOString().split('T')[0];
+                        if (reservedDates.has(dateStr)) {
+                            hasUnavailable = true;
+                            break;
+                        }
+                    }
+                    
+                    if (hasUnavailable) {
+                        alert('Ces dates contiennent des semaines réservées ou indisponibles.');
+                        calendar.unselect();
+                        return;
+                    }
+                    
+                    // Date range selected by user (drag & drop on calendar)
+                    var startDate = info.startStr.split('T')[0]; // YYYY-MM-DD format
+                    var endDate = new Date(info.end);
+                    endDate.setDate(endDate.getDate() - 1); // FullCalendar end is exclusive
+                    var endDateStr = endDate.toISOString().split('T')[0];
+                    
+                    // Fill the reservation form with selected dates
+                    if (document.getElementById('date_debut')) {
+                        document.getElementById('date_debut').value = startDate;
+                    }
+                    if (document.getElementById('date_fin')) {
+                        document.getElementById('date_fin').value = endDateStr;
+                    }
+                    
+                    // Show the reservation form if it exists
+                    var formEl = document.getElementById('reservation-form');
+                    if (formEl) {
+                        formEl.style.display = 'block';
+                        // Trigger cost calculation
+                        calculateCost();
+                        // Scroll to the form smoothly
+                        setTimeout(function() {
+                            formEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
+                    }
+                    
+                    // Clear selection after processing
+                    setTimeout(function() {
+                        calendar.unselect();
+                    }, 300);
                 }
             });
             calendar.render();

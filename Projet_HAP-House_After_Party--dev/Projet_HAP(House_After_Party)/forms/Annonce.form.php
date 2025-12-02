@@ -15,6 +15,7 @@ $offset = ($page - 1) * $perPage;
 // Search parameters
 $searchCommune = trim($_GET['search_commune'] ?? '');
 $searchCommuneId = intval($_GET['search_commune_id'] ?? 0);
+$searchNomBien = trim($_GET['search_nom_bien'] ?? ''); // New search parameter
 
 // Initialize variables
 $biens = [];
@@ -29,6 +30,7 @@ try {
         if (isset($_SESSION['user_id']) && isset($_POST['add_bien'])) {
             $nom = trim($_POST['nom_biens'] ?? '');
             $rue = trim($_POST['rue_biens'] ?? '');
+            $rue_validated = trim($_POST['rue_biens_validated'] ?? '0');
             $superficie = intval($_POST['superficie_biens'] ?? 0);
             $desc = trim($_POST['description_biens'] ?? '');
             $animal = isset($_POST['animal_biens']) ? 1 : 0;
@@ -36,31 +38,80 @@ try {
             $tarifs = $_POST['tarifs'] ?? [];
             $id_commune = intval($_POST['id_commune'] ?? 0);
             $id_type = intval($_POST['id_type_biens'] ?? 0);
+            // Name of creator (try several session keys)
+            $createdBy = null;
+            if (isset($_SESSION['user_name'])) {
+                $createdBy = $_SESSION['user_name'];
+            } elseif (isset($_SESSION['username'])) {
+                $createdBy = $_SESSION['username'];
+            } elseif (isset($_SESSION['email'])) {
+                $createdBy = $_SESSION['email'];
+            } elseif (isset($_SESSION['user_id'])) {
+                $createdBy = 'user_' . intval($_SESSION['user_id']);
+            }
             // composition will be an array of items: [ ['prestation_id'=>..., 'quantite'=>...], ... ]
             $composition = $_POST['composition'] ?? [];
 
             // Validation des champs de base
                 if ($nom && $rue && $superficie > 0 && $desc && $nb_couchage > 0 && $id_commune && $id_type && !empty($tarifs)) {
-                // Include created_by_name if available (store poster username). The DB may need migration to add created_by_name column.
-                $createdBy = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : null;
-                // Try to insert with created_by_name column - if the column doesn't exist, fall back to the shorter INSERT.
-                try {
-                    // Try to insert with both created_by_name and created_by_id (if the column exists)
-                    $createdById = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null;
-                    $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens, created_by_name, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                    $stmt->execute([$nom, $rue, $superficie, $desc, $animal, $nb_couchage, $id_commune, $id_type, $createdBy, $createdById]);
-                } catch (PDOException $e) {
-                    try {
-                        // Fallback: only created_by_name
-                        $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens, created_by_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                        $stmt->execute([$nom, $rue, $superficie, $desc, $animal, $nb_couchage, $id_commune, $id_type, $createdBy]);
-                    } catch (PDOException $e2) {
-                        // Column might not exist; fallback to original INSERT without created_by info
-                        $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-                        $stmt->execute([$nom, $rue, $superficie, $desc, $animal, $nb_couchage, $id_commune, $id_type]);
+                    // Server-side verification that the provided address exists using adresse.data.gouv.fr
+                    $query = $rue;
+                    $url = 'https://api-adresse.data.gouv.fr/search/?q=' . urlencode($query) . '&limit=1';
+                    if (!empty($id_commune)) {
+                        $url .= '&citycode=' . urlencode($id_commune);
                     }
-                }
-                $id_biens = $pdo->lastInsertId();
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $url);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+                    $apiResp = curl_exec($ch);
+                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+                    $apiData = $apiResp ? json_decode($apiResp, true) : null;
+                    if (!$apiData || empty($apiData['features'])) {
+                        $message = "Veuillez sélectionner une adresse valide via l'autocomplétion (rue).";
+                    }
+
+                    // verify commune exists in DB to avoid foreign key errors
+                    if (empty($message)) {
+                        $communeExists = false;
+                        if ($id_commune > 0) {
+                            try {
+                                $stmtComm = $pdo->prepare('SELECT 1 FROM Commune WHERE id_commune = ? LIMIT 1');
+                                $stmtComm->execute([$id_commune]);
+                                $communeExists = (bool) $stmtComm->fetchColumn();
+                            } catch (Exception $e) {
+                                $communeExists = false;
+                            }
+                        }
+                        if (!$communeExists) {
+                            $message = "Commune invalide. Veuillez sélectionner une commune valide dans l'autocomplétion.";
+                        }
+                    }
+
+                    // If the client sent a validation flag, we still accept it but server-side checks above protect against bypass.
+                    if (!empty($message)) {
+                        // skip insertion due to invalid address or commune
+                    } else {
+                        // proceed to insert
+                        try {
+                            // Try to insert with both created_by_name and created_by_id (if the column exists)
+                            $createdById = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null;
+                            $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens, created_by_name, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                            $stmt->execute([$nom, $rue, $superficie, $desc, $animal, $nb_couchage, $id_commune, $id_type, $createdBy, $createdById]);
+                        } catch (PDOException $e) {
+                            try {
+                                // Fallback: only created_by_name
+                                $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens, created_by_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                                $stmt->execute([$nom, $rue, $superficie, $desc, $animal, $nb_couchage, $id_commune, $id_type, $createdBy]);
+                            } catch (PDOException $e2) {
+                                // Column might not exist; fallback to original INSERT without created_by info
+                                $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+                                $stmt->execute([$nom, $rue, $superficie, $desc, $animal, $nb_couchage, $id_commune, $id_type]);
+                            }
+                        }
+                        $id_biens = $pdo->lastInsertId();
+                    }
 
                 // Créer les tarifs pour le bien
                 $tarifClass = new Tarif(null, null, null, null, null, $pdo);
@@ -166,6 +217,11 @@ try {
             $params[] = $searchCommuneId;
         }
 
+        if ($searchNomBien) {
+            $whereClause .= ' AND b.nom_biens LIKE ?';
+            $params[] = '%' . $searchNomBien . '%';
+        }
+
         // Get total count for pagination
         $countQuery = "SELECT COUNT(*) as total FROM Biens b LEFT JOIN Commune c ON b.id_commune = c.id_commune LEFT JOIN Type_Bien t ON b.id_type_biens = t.id_type_biens $whereClause";
         $countStmt = $pdo->prepare($countQuery);
@@ -226,7 +282,14 @@ try {
 } catch (Exception $e) {
     $message = "Erreur : " . $e->getMessage();
 }
+
+// expose saisons to JS for client-side auto-selection logic
+$allSaisons = [];
+if (isset($pdo) && $pdo) {
+    try { $allSaisons = $pdo->query('SELECT id_saison, lib_saison FROM Saison')->fetchAll(PDO::FETCH_ASSOC); } catch (Exception $e) { $allSaisons = []; }
+}
 ?>
+<script>window.saisons = <?= json_encode($allSaisons, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;</script>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -235,12 +298,17 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <link rel="stylesheet" href="../Css/annonce.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         .back-to-dashboard { display: inline-block; margin: 20px; padding: 10px 20px; background: #a100b8; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; }
         .back-to-dashboard:hover { background: #4b006e; }
+        /* Spacing and layout for tarif items */
+        .tarif-item { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .tarif-item input, .tarif-item select { min-width: 120px; }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Lightbox CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
     <script src="../js/autocomplete.js"></script>
@@ -250,6 +318,281 @@ try {
             initSearchCommuneAutocomplete();
             initAddCommuneAutocomplete();
             initAddCompositionAutocomplete();
+            
+            // Initialize address autocomplete for annonce street field
+            if (document.querySelector('#rue_biens')) {
+                initAddressAutocomplete('#rue_biens', function(item) {
+                    // prefer the street name (properties.name) when available
+                    var street = '';
+                    if (item && item.properties) {
+                        street = item.properties.name || item.name || item.properties.label || item.label || '';
+                    } else {
+                        street = item.name || item.label || '';
+                    }
+                    $('#rue_biens').val(street);
+                    if ($('#rue_biens_validated').length) $('#rue_biens_validated').val('1');
+                    if (item && item.properties) {
+                        var city = item.properties.city || item.city || '';
+                        var postcode = item.properties.postcode || '';
+                        if (city || postcode) {
+                            $('#commune_input').val((postcode ? postcode + ' ' : '') + city);
+                        }
+                        if (item.properties.citycode) {
+                            $('#commune_id').val(item.properties.citycode);
+                        }
+                    }
+                });
+
+                // Commune-specific street features and map handling
+                let streetsForCommuneFeatures = [];
+                let streetsForCommune = [];
+
+                let annonceMap = null;
+                let annonceLayerGroup = null;
+
+                function initAnnonceMap() {
+                    if (annonceMap) return;
+                    // ensure the map container is visible
+                    const $mapEl = $('#annonce-map');
+                    if ($mapEl.length) $mapEl.show();
+                    annonceMap = L.map('annonce-map', { zoomControl: true }).setView([46.8, 2.3], 6);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(annonceMap);
+                    annonceLayerGroup = L.layerGroup().addTo(annonceMap);
+                }
+
+                // Try to obtain a precise point for a feature: prefer Point from API, otherwise compute midpoint of LineString
+                function getPrecisePointForFeature(feature, callback) {
+                    if (!feature) return callback(null);
+                    // if feature already has a Point geometry, use it
+                    if (feature.geometry && feature.geometry.type === 'Point') {
+                        const c = feature.geometry.coordinates;
+                        return callback([c[1], c[0]]);
+                    }
+
+                    // try to query adresse.data.gouv.fr with the street name + city/postcode for a more precise point
+                    let q = '';
+                    let citycode = null;
+                    if (feature.properties) {
+                        const name = feature.properties.name || feature.properties.label || '';
+                        const city = feature.properties.city || '';
+                        const postcode = feature.properties.postcode || '';
+                        q = (name + ' ' + city + ' ' + postcode).trim();
+                        citycode = feature.properties.citycode || null;
+                    }
+
+                    if (q) {
+                        $.ajax({
+                            url: 'https://api-adresse.data.gouv.fr/search/',
+                            dataType: 'json',
+                            data: { q: q, citycode: citycode || undefined, limit: 5 },
+                            success: function(data) {
+                                const feats = data && data.features ? data.features : [];
+                                // prefer a Point geometry
+                                let p = feats.find(f => f.geometry && f.geometry.type === 'Point');
+                                if (p && p.geometry && p.geometry.coordinates) {
+                                    const cc = p.geometry.coordinates;
+                                    return callback([cc[1], cc[0]]);
+                                }
+                                // else fall back to midpoint from original feature
+                                return callback(midpointFromFeature(feature));
+                            },
+                            error: function() {
+                                return callback(midpointFromFeature(feature));
+                            }
+                        });
+                    } else {
+                        return callback(midpointFromFeature(feature));
+                    }
+                }
+
+                function midpointFromFeature(feature) {
+                    if (!feature || !feature.geometry) return null;
+                    const geom = feature.geometry;
+                    if (geom.type === 'LineString') {
+                        const coords = geom.coordinates;
+                        const mid = Math.floor(coords.length / 2);
+                        const c = coords[mid];
+                        return [c[1], c[0]];
+                    }
+                    if (geom.type === 'MultiLineString') {
+                        // choose longest part
+                        let longest = [];
+                        geom.coordinates.forEach(part => { if (part.length > longest.length) longest = part; });
+                        if (longest.length) {
+                            const mid = Math.floor(longest.length / 2);
+                            const c = longest[mid];
+                            return [c[1], c[0]];
+                        }
+                    }
+                    if (geom.type === 'Polygon') {
+                        const ring = geom.coordinates[0] || [];
+                        const mid = Math.floor(ring.length / 2);
+                        const c = ring[mid];
+                        return [c[1], c[0]];
+                    }
+                    return null;
+                }
+
+                function showStreetOnMap(feature) {
+                    if (!feature) return;
+                    initAnnonceMap();
+                    annonceLayerGroup.clearLayers();
+                    const geom = feature.geometry;
+                    // draw geometry if available (line/poly)
+                    if (geom) {
+                        if (geom.type === 'LineString') {
+                            const latlngs = geom.coordinates.map(c => [c[1], c[0]]);
+                            L.polyline(latlngs, { color: '#3388ff', weight: 6, opacity: 0.6 }).addTo(annonceLayerGroup);
+                        } else if (geom.type === 'MultiLineString') {
+                            geom.coordinates.forEach(part => {
+                                const latlngs = part.map(c => [c[1], c[0]]);
+                                L.polyline(latlngs, { color: '#3388ff', weight: 6, opacity: 0.6 }).addTo(annonceLayerGroup);
+                            });
+                        } else if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
+                            const coords = geom.type === 'Polygon' ? geom.coordinates[0] : geom.coordinates[0][0];
+                            const latlngs = coords.map(c => [c[1], c[0]]);
+                            L.polygon(latlngs, { color: '#3388ff', weight: 2, opacity: 0.8, fillOpacity: 0.15 }).addTo(annonceLayerGroup);
+                        }
+                    }
+
+                    // get a precise point (address point if available, else midpoint) and draw a small zone and marker
+                    getPrecisePointForFeature(feature, function(point) {
+                        if (!point) {
+                            // if no point, just fit to geometry bounds if any
+                            try { const bounds = annonceLayerGroup.getBounds(); if (bounds.isValid()) annonceMap.fitBounds(bounds.pad(0.2)); } catch (e) {}
+                            return;
+                        }
+                        const marker = L.circleMarker(point, { radius: 6, color: '#ff3333', fillColor: '#ff6666', fillOpacity: 1 }).addTo(annonceLayerGroup);
+                        // small zone (buffer) to represent the announcement's street zone
+                        const zone = L.circle(point, { radius: 30, color: '#ff3333', weight: 1, opacity: 0.6, fillOpacity: 0.12 }).addTo(annonceLayerGroup);
+                        // fit map to show both geometry and point
+                        const groupBounds = annonceLayerGroup.getBounds();
+                        if (groupBounds.isValid()) annonceMap.fitBounds(groupBounds.pad(0.2)); else annonceMap.setView(point, 17);
+                    });
+                }
+
+                function fetchStreetsForCommune(citycode) {
+                    if (!citycode) return;
+                    $.ajax({
+                        url: 'https://api-adresse.data.gouv.fr/search/',
+                        dataType: 'json',
+                        data: {
+                            citycode: citycode,
+                            type: 'street',
+                            limit: 1000
+                        },
+                        success: function(data) {
+                            const features = data && data.features ? data.features : [];
+                            streetsForCommuneFeatures = features;
+                            // keep only the street name for the local autocomplete
+                            streetsForCommune = features.map(function(f) {
+                                return (f && f.properties && (f.properties.name || f.properties.label)) ? (f.properties.name || f.properties.label) : null;
+                            }).filter(Boolean);
+                            if (streetsForCommune.length > 0) {
+                                setRueAutocompleteFromStreets();
+                            }
+                        }
+                    });
+                }
+
+                function setRueAutocompleteFromStreets() {
+                    try { $('#rue_biens').autocomplete('destroy'); } catch (e) {}
+                    $('#rue_biens').autocomplete({
+                        source: function(request, response) {
+                            const term = (request.term || '').toLowerCase();
+                            const results = streetsForCommune.filter(s => s.toLowerCase().indexOf(term) !== -1).slice(0, 50).map(s => ({ label: s, value: s }));
+                            response(results);
+                        },
+                        minLength: 2,
+                        select: function(event, ui) {
+                            $('#rue_biens').val(ui.item.value);
+                            if ($('#rue_biens_validated').length) $('#rue_biens_validated').val('1');
+                            const f = streetsForCommuneFeatures.find(function(feat) {
+                                const lab = feat && feat.properties && (feat.properties.label || feat.properties.name) ? (feat.properties.label || feat.properties.name) : null;
+                                return lab === ui.item.value;
+                            });
+                            if (f) {
+                                // set commune display (postcode + city) and citycode
+                                if (f.properties) {
+                                    var pc = f.properties.postcode || '';
+                                    var ct = f.properties.city || '';
+                                    if (pc || ct) $('#commune_input').val((pc ? pc + ' ' : '') + ct);
+                                    if (f.properties.citycode) $('#commune_id').val(f.properties.citycode);
+                                }
+                                showStreetOnMap(f);
+                            }
+                            return false;
+                        }
+                    });
+                }
+
+                // When the commune_id changes (set by commune autocomplete), fetch the streets for that commune
+                $(document).on('change', '#commune_id', function() {
+                    const cc = $(this).val();
+                    if (cc) fetchStreetsForCommune(cc);
+                });
+
+                // If the generic address autocomplete was used (it may not include geometry), attempt to fetch a feature and display it
+                // We override the earlier initAddressAutocomplete callback by listening for the validation flag change
+                $(document).on('change', '#rue_biens_validated', function() {
+                    if ($(this).val() === '1') {
+                        const label = $('#rue_biens').val();
+                        const citycode = $('#commune_id').val();
+                        if (!label) return;
+                        // search for a matching feature by label and citycode
+                        $.ajax({
+                            url: 'https://api-adresse.data.gouv.fr/search/',
+                            dataType: 'json',
+                            data: { q: label, citycode: citycode || undefined, limit: 5 },
+                            success: function(data) {
+                                const features = data && data.features ? data.features : [];
+                                if (features.length > 0) {
+                                    // try to find exact name match first
+                                    let f = features.find(function(feat) {
+                                        const lab = feat && feat.properties && (feat.properties.name || feat.properties.label) ? (feat.properties.name || feat.properties.label) : null;
+                                        return lab === label;
+                                    });
+                                    if (!f) f = features[0];
+                                    if (f) {
+                                        if (f.properties) {
+                                            const pc = f.properties.postcode || '';
+                                            const ct = f.properties.city || '';
+                                            if (pc || ct) $('#commune_input').val((pc ? pc + ' ' : '') + ct);
+                                            if (f.properties.citycode) $('#commune_id').val(f.properties.citycode);
+                                            const streetName = f.properties.name || f.name || f.properties.label || '';
+                                            if (streetName) $('#rue_biens').val(streetName);
+                                            if ($('#rue_biens_validated').length) $('#rue_biens_validated').val('1');
+                                        }
+                                        showStreetOnMap(f);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+
+                // Reset validation flag when typing
+                $(document).on('input', '#rue_biens', function() {
+                    if ($('#rue_biens_validated').length) $('#rue_biens_validated').val('0');
+                });
+
+                // Prevent submit if address not validated
+                $('#addBienForm').on('submit', function(e) {
+                    if (!$('#commune_id').val()) {
+                        alert('Veuillez sélectionner une commune valide dans la liste d\'autocomplétion.');
+                        e.preventDefault();
+                        return false;
+                    }
+                    if ($('#rue_biens_validated').length && $('#rue_biens_validated').val() !== '1') {
+                        alert('Veuillez sélectionner une adresse valide dans la liste d\'autocomplétion pour la rue.');
+                        e.preventDefault();
+                        return false;
+                    }
+                });
+            }
 
             // Gestion des tarifs dynamiques
             let tarifIndex = 1;
@@ -258,24 +601,169 @@ try {
                     <div class="tarif-item">
                         <input type="number" name="tarifs[${tarifIndex}][semaine_tarif]" placeholder="Semaine" min="1" max="52" value="<?= date('W') ?>" required>
                         <input type="number" name="tarifs[${tarifIndex}][annee_tarif]" placeholder="Année" min="2020" max="2030" value="<?= date('Y') ?>" required>
-                        <input type="number" step="0.01" name="tarifs[${tarifIndex}][tarif]" placeholder="Tarif (€)" required>
+                        <input type="number" step="0.01" name="tarifs[${tarifIndex}][tarif]" placeholder="Tarif (€) par semaine" required>
+                        <select name="tarifs[${tarifIndex}][saison_mode]" class="saison-mode">
+                            <option value="auto">Auto</option>
+                            <option value="haute">Forcer : Haute</option>
+                            <option value="basse">Forcer : Basse</option>
+                        </select>
                         <select name="tarifs[${tarifIndex}][id_saison]" required>
                             <option value="">-- Sélectionnez une saison --</option>
                             <?php
-                            $saisons = $pdo->query('SELECT * FROM Saison')->fetchAll(PDO::FETCH_ASSOC);
-                            foreach ($saisons as $saison): ?>
+                            $saisons_for_template = isset($pdo) ? $pdo->query('SELECT id_saison, lib_saison FROM Saison')->fetchAll(PDO::FETCH_ASSOC) : [];
+                            foreach ($saisons_for_template as $saison): ?>
                                 <option value="<?= $saison['id_saison'] ?>"><?= htmlspecialchars($saison['lib_saison']) ?></option>
                             <?php endforeach; ?>
                         </select>
                         <button type="button" class="remove-tarif">Supprimer</button>
+                        <small style="display:block;color:#666;margin-top:6px;">Vous pouvez laisser la saison se remplir automatiquement en fonction de la semaine (modifiable manuellement).</small>
                     </div>
                 `;
                 $('#tarifs-container').append(newTarif);
+                // After append, wire up auto-fill behavior for the newly added tarif-item
+                const $newItem = $('#tarifs-container .tarif-item').last();
+                const $weekInput = $newItem.find('input[name$="[semaine_tarif]"]');
+                const $seasonSelect = $newItem.find('select[name$="[id_saison]"]');
+                const $modeSelect = $newItem.find('select.saison-mode');
+                // mark that user hasn't manually changed the season yet
+                $seasonSelect.data('userSet', false);
+                $seasonSelect.on('change', function(e){ if (e && e.originalEvent) $(this).data('userSet', true); });
+                // mode select handling for newly added item
+                $modeSelect.on('change', function() {
+                    const mode = $(this).val();
+                    if (mode === 'haute' || mode === 'basse') {
+                        const sid = findSeasonIdByMode(mode);
+                        if (sid) {
+                            $seasonSelect.val(sid);
+                            $seasonSelect.data('userSet', true);
+                        }
+                    } else {
+                        // auto mode
+                        $seasonSelect.data('userSet', false);
+                        const val = parseInt($weekInput.val(), 10);
+                        if (!isNaN(val)) {
+                            const sid = guessSeasonIdFromWeek(val);
+                            if (sid) $seasonSelect.val(sid);
+                        }
+                    }
+                });
+                $weekInput.on('input change', function(){
+                    const val = parseInt($(this).val(), 10);
+                    if (isNaN(val) || val < 1 || val > 52) return;
+                    const mode = $modeSelect.val();
+                    if (mode === 'haute' || mode === 'basse') return; // forced mode
+                    if ($seasonSelect.data('userSet')) return; // user chose season manually
+                    const sid = guessSeasonIdFromWeek(val);
+                    if (sid) $seasonSelect.val(sid);
+                });
                 tarifIndex++;
             });
 
             $(document).on('click', '.remove-tarif', function() {
                 $(this).closest('.tarif-item').remove();
+            });
+
+            // Helper: find saison id by mode ('haute' or 'basse')
+            function findSeasonIdByMode(mode) {
+                if (!window.saisons || !window.saisons.length) return null;
+                const key = (mode || '').toLowerCase();
+                const list = window.saisons.map(s => ({ id: s.id_saison, name: (s.lib_saison || '').toLowerCase() }));
+                if (key === 'haute') {
+                    const hc = list.find(s => s.name.includes('haute') || s.name.includes('été') || s.name.includes('summer'));
+                    return hc ? hc.id : null;
+                }
+                if (key === 'basse') {
+                    const lc = list.find(s => s.name.includes('basse') || s.name.includes('hiver') || s.name.includes('winter'));
+                    return lc ? lc.id : null;
+                }
+                return null;
+            }
+
+            // Helper: guess a season id from week number using window.saisons
+            // Supports printemps, été (haute), automne, hiver
+            function guessSeasonIdFromWeek(week) {
+                if (!window.saisons || !window.saisons.length) return null;
+                const list = window.saisons.map(s => ({ id: s.id_saison, name: (s.lib_saison || '').toLowerCase() }));
+                const printemps = list.find(s => s.name.includes('printemps') || s.name.includes('spring'));
+                const ete = list.find(s => s.name.includes('ete') || s.name.includes('été') || s.name.includes('haute') || s.name.includes('summer'));
+                const automne = list.find(s => s.name.includes('automne') || s.name.includes('autumn'));
+                const hiver = list.find(s => s.name.includes('hiver') || s.name.includes('winter'));
+
+                // week ranges (ISO weeks):
+                // printemps: weeks 12-25
+                // été (haute): weeks 26-35
+                // automne: weeks 36-48
+                // hiver: weeks 49-53 and 1-11
+                let chosen = null;
+                if (week >= 12 && week <= 25) {
+                    chosen = printemps ? printemps.id : null;
+                } else if (week >= 26 && week <= 35) {
+                    chosen = ete ? ete.id : null;
+                } else if (week >= 36 && week <= 48) {
+                    chosen = automne ? automne.id : null;
+                } else {
+                    // weeks 49-53 and 1-11 -> hiver
+                    chosen = hiver ? hiver.id : null;
+                }
+                console.debug('guessSeasonIdFromWeek:', { week: week, printemps: printemps ? printemps.id : null, ete: ete ? ete.id : null, automne: automne ? automne.id : null, hiver: hiver ? hiver.id : null, chosen: chosen });
+                return chosen;
+            }
+
+            // Initialize existing tarif items so auto-fill and mode select work
+            $('#tarifs-container .tarif-item').each(function() {
+                const $item = $(this);
+                const $sel = $item.find('select[name$="[id_saison]"]');
+                const $weekInput = $item.find('input[name$="[semaine_tarif]"]');
+                const $modeSelect = $item.find('select.saison-mode');
+                if ($sel.length) $sel.data('userSet', false);
+                if ($modeSelect.length) {
+                    $modeSelect.off('change').on('change', function() {
+                        const mode = $(this).val();
+                        if (mode === 'haute' || mode === 'basse') {
+                            const sid = findSeasonIdByMode(mode);
+                            if (sid) {
+                                $sel.val(sid);
+                                $sel.data('userSet', true);
+                            }
+                        } else {
+                            $sel.data('userSet', false);
+                            const val = parseInt($weekInput.val(), 10);
+                            if (!isNaN(val)) {
+                                const sid = guessSeasonIdFromWeek(val);
+                                if (sid) $sel.val(sid);
+                            }
+                        }
+                    });
+                }
+                if ($weekInput.length) {
+                    $weekInput.off('input change').on('input change', function() {
+                        const val = parseInt($(this).val(), 10);
+                        if (isNaN(val) || val < 1 || val > 52) return;
+                        const mode = $modeSelect.length ? $modeSelect.val() : 'auto';
+                        if (mode === 'haute' || mode === 'basse') return;
+                        if ($sel.data('userSet')) return;
+                        const sid = guessSeasonIdFromWeek(val);
+                        if (sid) $sel.val(sid);
+                    });
+                }
+            });
+
+            // Delegate: whenever a week input changes, attempt to auto-fill the corresponding season
+            $(document).on('input change', '#tarifs-container input[name$="[semaine_tarif]"]', function() {
+                const $week = $(this);
+                const $tarifItem = $week.closest('.tarif-item');
+                const $seasonSelect = $tarifItem.find('select[name$="[id_saison]"]');
+                if (!$seasonSelect.length) return;
+                if ($seasonSelect.data('userSet')) return; // user manually set season
+                const val = parseInt($week.val(), 10);
+                if (isNaN(val) || val < 1 || val > 52) return;
+                const sid = guessSeasonIdFromWeek(val);
+                if (sid) $seasonSelect.val(sid);
+            });
+
+            // Delegate: when user explicitly changes a season select, mark it to prevent auto-overwrite
+            $(document).on('change', '#tarifs-container select[name$="[id_saison]"]', function(e) {
+                if (e && e.originalEvent) $(this).data('userSet', true);
             });
 
 
@@ -301,61 +789,75 @@ try {
                 $(this).closest('.composition-item').remove();
             });
 
-            // Photo inputs: allow multiple separate inputs so selecting a file doesn't replace others
-            let photoIndex = 1;
-            function createPhotoRow(index) {
-                return $(
-                    '<div class="photo-input-row" data-index="' + index + '" style="display:flex;gap:8px;align-items:center;">' +
-                    '<input type="file" name="photos[]" class="photo-input">' +
-                    '<button type="button" class="remove-photo-input">Supprimer</button>' +
-                    '</div>'
-                );
+            // Photos : drag & drop + multiple selection handling
+            const photoDT = new DataTransfer();
+            const $photosInput = $('<input id="photos_input" type="file" name="photos[]" accept="image/*" multiple style="display:none;">');
+            $('#photos-container').empty().append($photosInput);
+
+            function refreshInputFiles() {
+                const input = document.getElementById('photos_input');
+                try { input.files = photoDT.files; } catch (e) { /* some browsers restrict setting files directly */ }
             }
 
-            $('#add-photo-input').on('click', function() {
-                const row = createPhotoRow(photoIndex);
-                $('#photos-container').append(row);
-                photoIndex++;
-            });
-
-            // Handle change to show preview
-            $(document).on('change', '.photo-input', function(e) {
-                const input = this;
-                const file = input.files && input.files[0];
-                const $row = $(input).closest('.photo-input-row');
-                const idx = $row.attr('data-index') || Date.now();
-
-                // remove existing preview for this row if any
-                $('#photo-previews').find('[data-preview-index="' + idx + '"]').remove();
-
-                if (file) {
+            function renderPreviews() {
+                $('#photo-previews').empty();
+                for (let i = 0; i < photoDT.files.length; i++) {
+                    const file = photoDT.files[i];
+                    const idx = i;
                     const reader = new FileReader();
                     reader.onload = function(evt) {
-                        const $preview = $('<div class="photo-preview" data-preview-index="' + idx + '" style="position:relative;width:100px;height:70px;border:1px solid #ddd;padding:4px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:6px;overflow:hidden;"></div>');
+                        const $preview = $('<div class="photo-preview" data-preview-index="' + idx + '" style="position:relative;width:100px;height:70px;border:1px solid #ddd;padding:4px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:6px;overflow:hidden;margin-right:8px;margin-bottom:8px;"></div>');
                         const $img = $('<img src="' + evt.target.result + '" style="max-width:100%;max-height:100%;display:block;">');
-                        const $remove = $('<button type="button" class="remove-preview" style="position:absolute;top:2px;right:2px;background:#fff;border:0;padding:2px 6px;border-radius:4px;cursor:pointer;">✕</button>');
+                        const $remove = $('<button type="button" class="remove-preview" data-remove-index="' + idx + '" style="position:absolute;top:2px;right:2px;background:#fff;border:0;padding:2px 6px;border-radius:4px;cursor:pointer;">✕</button>');
                         $remove.on('click', function(){
-                            $preview.remove();
-                            $row.remove();
+                            const removeIndex = parseInt($(this).attr('data-remove-index'));
+                            const newDT = new DataTransfer();
+                            for (let j = 0; j < photoDT.files.length; j++) {
+                                if (j === removeIndex) continue;
+                                newDT.items.add(photoDT.files[j]);
+                            }
+                            // replace contents of photoDT by copying
+                            while (photoDT.items.length > 0) photoDT.items.remove(0);
+                            for (let k = 0; k < newDT.files.length; k++) photoDT.items.add(newDT.files[k]);
+                            refreshInputFiles();
+                            renderPreviews();
                         });
                         $preview.append($img).append($remove);
                         $('#photo-previews').append($preview);
-                        // show remove button on row
-                        $row.find('.remove-photo-input').show();
                     };
                     reader.readAsDataURL(file);
-                } else {
-                    $row.find('.remove-photo-input').hide();
                 }
+            }
+
+            // Add files to DataTransfer and render previews
+            function addFilesToDT(files) {
+                for (let f of files) {
+                    // skip duplicates (name+size)
+                    let exists = false;
+                    for (let i = 0; i < photoDT.files.length; i++) { if (photoDT.files[i].name === f.name && photoDT.files[i].size === f.size) { exists = true; break; } }
+                    if (!exists) photoDT.items.add(f);
+                }
+                refreshInputFiles();
+                renderPreviews();
+            }
+
+            // open file selector
+            $('#add-photo-input').off('click').on('click', function() { $('#photos_input').trigger('click'); });
+
+            // when user selects files via picker
+            $(document).on('change', '#photos_input', function(e) {
+                const files = e.target.files;
+                addFilesToDT(files);
             });
 
-            // Remove row and corresponding preview
-            $(document).on('click', '.remove-photo-input', function() {
-                const $row = $(this).closest('.photo-input-row');
-                const idx = $row.attr('data-index');
-                $('#photo-previews').find('[data-preview-index="' + idx + '"]').remove();
-                $row.remove();
-            });
+            // drag & drop support on photos container area
+            const $dropZone = $('<div id="photo-dropzone" style="border:2px dashed #ccc;border-radius:6px;padding:16px;text-align:center;cursor:pointer;background:#fafafa;">Glissez-déposez vos photos ici ou cliquez pour sélectionner</div>');
+            $('#photos-container').prepend($dropZone);
+            $dropZone.on('click', function(){ $('#photos_input').trigger('click'); });
+
+            $dropZone.on('dragover', function(e){ e.preventDefault(); e.originalEvent.dataTransfer.dropEffect = 'copy'; $(this).css('border-color','#6aa6ff'); });
+            $dropZone.on('dragleave', function(e){ e.preventDefault(); $(this).css('border-color','#ccc'); });
+            $dropZone.on('drop', function(e){ e.preventDefault(); $(this).css('border-color','#ccc'); const dt = e.originalEvent.dataTransfer; if (dt && dt.files && dt.files.length) { addFilesToDT(dt.files); } });
         });
     </script>
 </head>
@@ -371,15 +873,22 @@ try {
         <?php if (isset($_SESSION['user_id'])): ?>
         <div class="form-section">
             <h3>Ajouter une nouvelle annonce</h3>
-            <form method="post" enctype="multipart/form-data">
+            <form id="addBienForm" method="post" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="nom_biens">Nom du bien:</label>
                     <input type="text" id="nom_biens" name="nom_biens" required>
                 </div>
+                 <div class="form-group">
+                    <label for="commune_input">Commune:</label>
+                    <input type="text" id="commune_input" name="commune" placeholder="Tapez le nom d'une commune..." required>
+                    <input type="hidden" id="commune_id" name="id_commune">
+                </div>
                 <div class="form-group">
                     <label for="rue_biens">Rue:</label>
                     <input type="text" id="rue_biens" name="rue_biens" required>
+                    <input type="hidden" id="rue_biens_validated" name="rue_biens_validated" value="0">
                 </div>
+                <div id="annonce-map" style="height:240px;margin-bottom:12px;border:1px solid #ddd;border-radius:6px;display:none;"></div>
                 <div class="form-group">
                     <label for="superficie_biens">Superficie (m²):</label>
                     <input type="number" id="superficie_biens" name="superficie_biens" required>
@@ -408,11 +917,6 @@ try {
                     <p style="font-size:0.9em;color:#666;margin-top:8px;">Ex : 2 chambres, 1 salle de bain, 1 salon. Choisissez un type et saisissez la quantité.</p>
                 </details>
                 <div class="form-group">
-                    <label for="commune_input">Commune:</label>
-                    <input type="text" id="commune_input" name="commune" placeholder="Tapez le nom d'une commune..." required>
-                    <input type="hidden" id="commune_id" name="id_commune">
-                </div>
-                <div class="form-group">
                     <label for="id_type_biens">Type de bien:</label>
                     <select id="id_type_biens" name="id_type_biens" required>
                         <option value="">-- Sélectionnez un type --</option>
@@ -426,17 +930,12 @@ try {
                     <input type="checkbox" id="animal_biens" name="animal_biens">
                 </div>
                 <div class="form-group">
-                    <label for="photos-0">Photos:</label>
-                    <div id="photos-container">
-                        <div class="photo-input-row" data-index="0" style="display:flex;gap:8px;align-items:center;">
-                            <input id="photos-0" type="file" name="photos[]" class="photo-input" accept="image/*">
-                            <button type="button" class="remove-photo-input" style="display:none;">Supprimer</button>
-                        </div>
-                    </div>
+                    <label for="photos_input">Photos:</label>
+                    <div id="photos-container"></div>
                     <div id="photo-previews" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"></div>
                     <div style="margin-top:8px;">
-                        <button type="button" id="add-photo-input">Ajouter une photo</button>
-                        <small style="display:block;color:#666;margin-top:6px;">Vous pouvez sélectionner plusieurs fichiers en une fois ou ajouter plusieurs champs. Les champs séparés conservent chaque sélection.</small>
+                        <button type="button" id="add-photo-input">Sélectionner des photos</button>
+                        <small style="display:block;color:#666;margin-top:6px;">Glissez-déposez vos photos ou sélectionnez plusieurs fichiers à la fois.</small>
                     </div>
                 </div>
 
@@ -464,6 +963,12 @@ try {
                     </div>
                 </form>
             </div>
+
+            <!-- New search by name form -->
+            <form method="get" style="margin-bottom:18px;display:flex;gap:12px;align-items:center;">
+                <input type="text" name="search_nom_bien" placeholder="Rechercher un bien par nom..." value="<?= htmlspecialchars($searchNomBien) ?>" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;">
+                <button type="submit" style="padding:8px 18px;border-radius:6px;background:#a100b8;color:#fff;border:none;">Filtrer</button>
+            </form>
 
             <?php if ($biens): ?>
                 <div class="annonces-grid">

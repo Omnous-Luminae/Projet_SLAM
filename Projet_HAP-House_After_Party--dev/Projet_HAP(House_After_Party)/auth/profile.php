@@ -73,6 +73,10 @@ try {
     $reviewsStmt->execute([$userId]);
     $userReviews = $reviewsStmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Fetch user data for profile form
+    $locClass = new Locataire(null, null, null, null, null, null, null, null, null, $pdo);
+    $userData = $locClass->getLocataireById($userId);
+
 } catch (Exception $e) {
     $message = 'Erreur: ' . $e->getMessage();
 }
@@ -85,6 +89,69 @@ try {
     <title>Profil</title>
     <link rel="stylesheet" href="../Css/style.css">
     <link rel="stylesheet" href="../Css/profile.css">
+    <style>
+    .profile-edit-form {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 12px rgba(161,0,184,0.07);
+        padding: 32px 24px 24px 24px;
+        max-width: 480px;
+        margin: 32px auto 24px auto;
+        border: 1px solid #f3e6fa;
+    }
+    .profile-edit-form .form-group {
+        margin-bottom: 18px;
+    }
+    .profile-edit-form label {
+        font-weight: 600;
+        color: #a100b8;
+        display: block;
+        margin-bottom: 6px;
+    }
+    .profile-edit-form input[type="text"],
+    .profile-edit-form input[type="email"],
+    .profile-edit-form input[type="tel"],
+    .profile-edit-form input[type="date"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1b3e0;
+        border-radius: 6px;
+        font-size: 1em;
+        background: #faf7fc;
+        transition: border 0.2s;
+    }
+    .profile-edit-form input:focus {
+        border-color: #a100b8;
+        outline: none;
+        background: #fff;
+    }
+    .profile-edit-form small {
+        color: #888;
+        font-size: 0.92em;
+        margin-top: 2px;
+        display: block;
+    }
+    .profile-edit-form button.profile-button {
+        background: linear-gradient(90deg, #a100b8 60%, #e0aaff 100%);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 12px 28px;
+        font-size: 1.08em;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+        box-shadow: 0 2px 8px rgba(161,0,184,0.08);
+        transition: background 0.2s;
+    }
+    .profile-edit-form button.profile-button:hover {
+        background: linear-gradient(90deg, #a100b8 80%, #c77dff 100%);
+    }
+    .profile-edit-form input[type="checkbox"] {
+        margin-right: 8px;
+        accent-color: #a100b8;
+    }
+    </style>
 </head>
 <body>
     <div class="profile-container">
@@ -94,24 +161,6 @@ try {
             <div class="message"><?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
 
-        <section class="profile-section">
-            <h3>Changer le mot de passe</h3>
-            <form method="post" class="password-form">
-                <div class="form-group">
-                    <label for="current_password">Mot de passe actuel</label>
-                    <input type="password" id="current_password" name="current_password" required>
-                </div>
-                <div class="form-group">
-                    <label for="new_password">Nouveau mot de passe</label>
-                    <input type="password" id="new_password" name="new_password" required>
-                </div>
-                <div class="form-group">
-                    <label for="confirm_password">Confirmer le nouveau mot de passe</label>
-                    <input type="password" id="confirm_password" name="confirm_password" required>
-                </div>
-                <button type="submit" name="change_password" class="profile-button">Mettre à jour</button>
-            </form>
-        </section>
         <section class="profile-section">
             <h3>Mes réservations</h3>
             <?php if (!empty($userReservations)): ?>
@@ -195,6 +244,73 @@ try {
             <?php else: ?>
                 <p>Vous n'avez posté aucun commentaire pour le moment.</p>
             <?php endif; ?>
+        </section>
+
+        <section class="profile-section">
+            <h3>Modifier mes informations</h3>
+            <form method="post" class="profile-edit-form">
+                <div class="form-group">
+                    <label for="pseudo">Pseudo</label>
+                    <input type="text" id="pseudo" name="pseudo" value="<?= htmlspecialchars($userData['pseudo'] ?? '') ?>" maxlength="30" pattern="^[a-zA-Z0-9_\-]{3,30}$" required>
+                    <small>3 à 30 caractères, lettres, chiffres, tirets, underscores.</small>
+                </div>
+                <div class="form-group">
+                    <label for="nom">Nom</label>
+                    <input type="text" id="nom" name="nom" value="<?= htmlspecialchars($userData['nom'] ?? '') ?>" maxlength="50" required>
+                </div>
+                <div class="form-group">
+                    <label for="prenom">Prénom</label>
+                    <input type="text" id="prenom" name="prenom" value="<?= htmlspecialchars($userData['prenom'] ?? '') ?>" maxlength="50" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" value="<?= htmlspecialchars($userData['email'] ?? '') ?>" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="tel">Téléphone</label>
+                    <input type="tel" id="tel" name="tel" value="<?= htmlspecialchars($userData['tel'] ?? '') ?>" maxlength="20" pattern="[0-9+\s.-]{8,20}" required>
+                </div>
+                <div class="form-group">
+                    <label for="date_naissance">Date de naissance</label>
+                    <input type="date" id="date_naissance" name="date_naissance" value="<?= htmlspecialchars($userData['date_naissance'] ?? '') ?>" max="<?= date('Y-m-d', strtotime('-18 years')) ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="adresse">Adresse</label>
+                    <input type="text" id="adresse" name="adresse" value="<?= htmlspecialchars($userData['adresse'] ?? '') ?>" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="complement">Complément d'adresse</label>
+                    <input type="text" id="complement" name="complement" value="<?= htmlspecialchars($userData['complement'] ?? '') ?>" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="commune">Commune</label>
+                    <input type="text" id="commune" name="commune" value="<?= htmlspecialchars($userData['commune'] ?? '') ?>" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                    <input type="checkbox" id="rgpd" name="rgpd" required>
+                    <label for="rgpd">J'accepte la politique de confidentialité et le traitement de mes données personnelles conformément au RGPD.</label>
+                </div>
+                <button type="submit" name="update_profile" class="profile-button">Enregistrer les modifications</button>
+            </form>
+        </section>
+
+        <section class="profile-section">
+            <h3>Changer le mot de passe</h3>
+            <form method="post" class="password-form">
+                <div class="form-group">
+                    <label for="current_password">Mot de passe actuel</label>
+                    <input type="password" id="current_password" name="current_password" required>
+                </div>
+                <div class="form-group">
+                    <label for="new_password">Nouveau mot de passe</label>
+                    <input type="password" id="new_password" name="new_password" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm_password">Confirmer le nouveau mot de passe</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required>
+                </div>
+                <button type="submit" name="change_password" class="profile-button">Mettre à jour</button>
+            </form>
         </section>
     </div>
 </body>

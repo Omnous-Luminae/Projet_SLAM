@@ -17,33 +17,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     $prenom_locataire = trim($_POST['prenom_locataire'] ?? '');
     $email_locataire = trim($_POST['email_locataire'] ?? '');
     $tel_locataire = trim($_POST['tel_locataire'] ?? '');
+    $tel_nationalite = trim($_POST['tel_nationalite'] ?? 'FR');
     $date_naissance_locataire = trim($_POST['date_naissance_locataire'] ?? '');
     $password_locataire = trim($_POST['password_locataire'] ?? '');
     $confirm_password = trim($_POST['confirm_password'] ?? '');
     $rue_locataire = trim($_POST['rue_locataire'] ?? '');
+    $rue_locataire_only = trim($_POST['rue_locataire_only'] ?? '');
     $complement_rue_locataire = trim($_POST['complement_rue_locataire'] ?? '');
+    $rue_validated = trim($_POST['rue_validated'] ?? '0');
     $raison_sociale = trim($_POST['raison_sociale'] ?? '');
+    $siren = trim($_POST['siren'] ?? '');
     $siret = trim($_POST['siret'] ?? '');
     $id_commune = intval($_POST['id_commune'] ?? 0);
 
     $errors = [];
 
-    // Validation du numéro de téléphone français
-    $tel_pattern = '/^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/';
-    if (!preg_match($tel_pattern, $tel_locataire)) {
-        $errors[] = "Numéro de téléphone invalide. Utilisez un format français valide (ex: 06 12 34 56 78).";
+    // Validation du numéro de téléphone selon la nationalité sélectionnée
+    function validatePhoneNumber($phone, $nationality) {
+        $phone = preg_replace('/[\s.-]/', '', $phone);
+        
+        $patterns = [
+            'FR' => '/^(?:(?:\+33|0033)33|0)[1-9]\d{8}$/',  // 9 digits after 0 or +33
+            'BE' => '/^(?:\+32|0032|0)(?:2|475|47|494|497|498|499|8|9)\d{7,8}$/',  // Belgium
+            'DE' => '/^(?:\+49|0049|0)[1-9]\d{4,12}$/',  // Germany
+            'ES' => '/^(?:\+34|0034)?[6789]\d{8}$/',  // Spain
+            'IT' => '/^(?:\+39|0039)(?:3[0-9]{8}|0[0-9]{1,10})$/',  // Italy
+            'CH' => '/^(?:\+41|0041|0)[1-9]\d{8}$/',  // Switzerland
+        ];
+        
+        $pattern = $patterns[$nationality] ?? $patterns['FR'];
+        return preg_match($pattern, $phone) ? true : false;
+    }
+    
+    if (!validatePhoneNumber($tel_locataire, $tel_nationalite)) {
+        $errors[] = "Numéro de téléphone invalide pour la nationalité sélectionnée.";
     }
 
-    // Validation du SIRET pour personne morale
+    // Age check (must be 18+)
+    if (!empty($date_naissance_locataire)) {
+        try {
+            $birth = new DateTime($date_naissance_locataire);
+            $now = new DateTime();
+            $age = $now->diff($birth)->y;
+            if ($age < 18) {
+                $errors[] = "Vous devez être majeur pour vous inscrire (18+).";
+            }
+        } catch (Exception $e) {
+            $errors[] = "Date de naissance invalide.";
+        }
+    }
+
+    // Validation du SIREN pour personne morale
     if ($type === 'morale') {
+        if (strlen($siren) !== 9 || !ctype_digit($siren)) {
+            $errors[] = "Le numéro SIREN doit contenir exactement 9 chiffres.";
+        }
         if (strlen($siret) !== 14 || !ctype_digit($siret)) {
             $errors[] = "Le numéro SIRET doit contenir exactement 14 chiffres.";
         }
     }
 
-    $required_fields = [$nom_locataire, $prenom_locataire, $email_locataire, $password_locataire, $confirm_password, $date_naissance_locataire, $rue_locataire, $tel_locataire];
+    // Vérification côté serveur que l'adresse existe réellement via adresse.data.gouv.fr
+    if (!empty($rue_locataire_only)) {
+        $query = $rue_locataire_only;
+        $url = 'https://api-adresse.data.gouv.fr/search/?q=' . urlencode($query) . '&limit=1';
+        if (!empty($id_commune)) {
+            // include citycode to narrow the search when available
+            $url .= '&citycode=' . urlencode($id_commune);
+        }
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $apiResp = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $apiData = $apiResp ? json_decode($apiResp, true) : null;
+        if (!$apiData || empty($apiData['features'])) {
+            $errors[] = "Veuillez sélectionner une adresse existante via l'autocomplétion (rue).";
+        }
+    }
+
+    // Validate SIREN/SIRET if provided using Luhn
+    function is_valid_siren($siren) {
+        if (!preg_match('/^\d{9}$/', $siren)) return false;
+        $sum = 0;
+        for ($i = 0; $i < 9; $i++) {
+            $n = intval($siren[$i]);
+            if ($i % 2 == 0) {
+                $n = $n * 2;
+                if ($n > 9) $n -= 9;
+            }
+            $sum += $n;
+        }
+        return ($sum % 10) === 0;
+    }
+    if ($type === 'morale' && $siren !== '') {
+        if (!is_valid_siren($siren)) {
+            $errors[] = "Le SIREN est invalide.";
+        }
+    }
+
+    $required_fields = [$nom_locataire, $prenom_locataire, $email_locataire, $password_locataire, $confirm_password, $date_naissance_locataire, $rue_locataire_only, $tel_locataire];
     if ($type === 'morale') {
         $required_fields[] = $raison_sociale;
+        $required_fields[] = $siren;
         $required_fields[] = $siret;
     }
 
@@ -68,6 +146,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         }
     }
 
+    // Password policy (CNIL-like): min 8, upper, lower, digit, special
+    $pw_ok = preg_match('/.{8,}/', $password_locataire)
+        && preg_match('/[A-Z]/', $password_locataire)
+        && preg_match('/[a-z]/', $password_locataire)
+        && preg_match('/[0-9]/', $password_locataire)
+        && preg_match('/[\W_]/', $password_locataire);
+    if (!$pw_ok) {
+        $errors[] = "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.";
+    }
+
     if (empty($errors)) {
         $pdo = $pdo ?? null;
         if ($pdo) {
@@ -75,8 +163,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             $siret_value = $type === 'morale' ? $siret : null;
             $raison_sociale_value = $type === 'morale' ? $raison_sociale : null;
 
-            $locataireObj = new Locataire(null, $nom_locataire, $prenom_locataire, $email_locataire, $tel_locataire, $date_naissance_locataire, $hashed_password, $rue_locataire, $complement_rue_locataire, $pdo);
-            if ($locataireObj->createLocataire($nom_locataire, $prenom_locataire, $email_locataire, $tel_locataire, $date_naissance_locataire, $hashed_password, $rue_locataire, $complement_rue_locataire, $siret_value, $raison_sociale_value, $id_commune)) {
+            $locataireObj = new Locataire(null, $nom_locataire, $prenom_locataire, $email_locataire, $tel_locataire, $date_naissance_locataire, $hashed_password, $rue_locataire_only, $complement_rue_locataire, $pdo);
+            if ($locataireObj->createLocataire($nom_locataire, $prenom_locataire, $email_locataire, $tel_locataire, $date_naissance_locataire, $hashed_password, $rue_locataire_only, $complement_rue_locataire, $siret_value, $raison_sociale_value, $id_commune)) {
                 $message = "Inscription réussie. Vous pouvez maintenant vous connecter.";
             } else {
                 $message = "Erreur lors de l'inscription.";
@@ -95,6 +183,8 @@ $a = rand(2, 9);
 $b = rand(2, 9);
 $_SESSION['captcha_answer'] = $a + $b;
 $_SESSION['captcha_question'] = "Combien font $a + $b ?";
+// Date limite pour être majeur (18 ans)
+$maxDob = date('Y-m-d', strtotime('-18 years'));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -112,10 +202,56 @@ $_SESSION['captcha_question'] = "Combien font $a + $b ?";
         function toggleMoraleFields() {
             const type = document.querySelector('input[name="type"]:checked').value;
             document.getElementById('morale-fields').style.display = (type === 'morale') ? 'block' : 'none';
+            document.getElementById('morale-siren').style.display = (type === 'morale') ? 'block' : 'none';
             document.getElementById('morale-siret').style.display = (type === 'morale') ? 'block' : 'none';
         }
 
+        // Fetch company info from API.SIREN.fr when SIREN is entered
+        function fetchSirenInfo(siren) {
+            if (siren.length !== 9 || !/^\d+$/.test(siren)) {
+                return;
+            }
+            
+            fetch(`https://api.siren.fr/${siren}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.raison_sociale) {
+                        document.querySelector('input[name="raison_sociale"]').value = data.raison_sociale;
+                        document.getElementById('siren-info').textContent = `✓ Entreprise trouvée: ${data.raison_sociale}`;
+                        document.getElementById('siren-info').style.color = 'green';
+                    } else {
+                        document.getElementById('siren-info').textContent = '';
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('siren-info').textContent = '';
+                });
+        }
+
         $(document).ready(function() {
+            // SIREN lookup when user finishes entering
+            let sirenTimeout;
+            $('#siren').on('input', function() {
+                clearTimeout(sirenTimeout);
+                const siren = $(this).val();
+                if (siren.length === 9 && /^\d+$/.test(siren)) {
+                    sirenTimeout = setTimeout(() => fetchSirenInfo(siren), 500);
+                }
+            });
+
+            // Only allow digits in SIREN and SIRET
+            $('#siren, input[name="siret"]').on('input', function() {
+                $(this).val($(this).val().replace(/[^\d]/g, ''));
+            });
+
+            // Only allow digits and spaces in phone
+            $('#tel_locataire').on('input', function() {
+                let val = $(this).val();
+                val = val.replace(/[^\d\s.-]/g, '');
+                $(this).val(val);
+            });
+
+            // Commune autocomplete
             $("#commune").autocomplete({
                 source: function(request, response) {
                     $.ajax({
@@ -141,9 +277,39 @@ $_SESSION['captcha_question'] = "Combien font $a + $b ?";
                 $("#id_commune").val('');
             });
 
+            // When typing in street, mark address as not validated
+            $(document).on('input', '#rue_locataire', function() {
+                if ($('#rue_validated').length) $('#rue_validated').val('0');
+            });
+
+            // Initialize address autocomplete for the street input with separated display
+            if (document.querySelector('#rue_locataire')) {
+                initAddressAutocomplete('#rue_locataire', function(item) {
+                    // Extract street name only
+                    const streetName = item.label.split(',')[0].trim();
+                    $('#rue_locataire').val(streetName);
+                    $('#rue_locataire_full').val(item.label);
+                    
+                    // mark as validated so the form can be submitted
+                    if ($('#rue_validated').length) $('#rue_validated').val('1');
+                    if (item.city) {
+                        $('#commune').val(item.city);
+                    }
+                    if (item.properties && item.properties.citycode) {
+                        $('#id_commune').val(item.properties.citycode);
+                    }
+                });
+            }
+
             $("#registerForm").on('submit', function(e) {
                 if (!$("#id_commune").val()) {
                     alert("Veuillez sélectionner une commune valide dans la liste d'autocomplétion.");
+                    e.preventDefault();
+                    return false;
+                }
+                // Ensure the street was picked from the autocomplete
+                if ($('#rue_validated').length && $('#rue_validated').val() !== '1') {
+                    alert("Veuillez sélectionner une adresse valide dans la liste d'autocomplétion pour la rue.");
                     e.preventDefault();
                     return false;
                 }
@@ -184,7 +350,8 @@ $_SESSION['captcha_question'] = "Combien font $a + $b ?";
             </div>
             <div class="form-group">
                 <label>Date de Naissance</label>
-                <input type="date" class="form-control" name="date_naissance_locataire" value="<?php echo htmlspecialchars($_POST['date_naissance_locataire'] ?? ''); ?>" required>
+                <input id="date_naissance_locataire" type="date" class="form-control" name="date_naissance_locataire" value="<?php echo htmlspecialchars($_POST['date_naissance_locataire'] ?? ''); ?>" max="<?php echo $maxDob; ?>" required>
+                <small>Vous devez avoir au moins 18 ans pour vous inscrire.</small>
             </div>
             <div class="form-group">
                 <label>Email</label>
@@ -192,15 +359,29 @@ $_SESSION['captcha_question'] = "Combien font $a + $b ?";
             </div>
             <div class="form-group">
                 <label>Téléphone</label>
-                <input type="tel" class="form-control" name="tel_locataire" value="<?php echo htmlspecialchars($_POST['tel_locataire'] ?? ''); ?>" required>
+                <div style="display: flex; gap: 10px;">
+                    <select class="form-control" name="tel_nationalite" id="tel_nationalite" style="flex: 0 0 auto; width: auto;">
+                        <option value="FR" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'FR') ? 'selected' : ''; ?>>🇫🇷 France (+33)</option>
+                        <option value="BE" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'BE') ? 'selected' : ''; ?>>🇧🇪 Belgique (+32)</option>
+                        <option value="DE" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'DE') ? 'selected' : ''; ?>>🇩🇪 Allemagne (+49)</option>
+                        <option value="ES" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'ES') ? 'selected' : ''; ?>>🇪🇸 Espagne (+34)</option>
+                        <option value="IT" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'IT') ? 'selected' : ''; ?>>🇮🇹 Italie (+39)</option>
+                        <option value="CH" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'CH') ? 'selected' : ''; ?>>🇨🇭 Suisse (+41)</option>
+                    </select>
+                    <input type="tel" class="form-control" name="tel_locataire" id="tel_locataire" value="<?php echo htmlspecialchars($_POST['tel_locataire'] ?? ''); ?>" maxlength="20" placeholder="Numéro de téléphone" required>
+                </div>
+                <small>Format selon le pays sélectionné (ex: FR: 06 12 34 56 78)</small>
             </div>
             <div class="form-group">
                 <label>Rue</label>
-                <input type="text" class="form-control" name="rue_locataire" value="<?php echo htmlspecialchars($_POST['rue_locataire'] ?? ''); ?>" required>
+                <input id="rue_locataire" type="text" class="form-control" name="rue_locataire_only" value="<?php echo htmlspecialchars($_POST['rue_locataire_only'] ?? ''); ?>" placeholder="Sélectionnez une rue via l'autocomplétion" required>
+                <input type="hidden" id="rue_locataire_full" name="rue_locataire" value="<?php echo htmlspecialchars($_POST['rue_locataire'] ?? ''); ?>">
+                <input type="hidden" id="rue_validated" name="rue_validated" value="<?php echo htmlspecialchars($_POST['rue_validated'] ?? '0'); ?>">
+                <small>Tapez pour voir les adresses disponibles</small>
             </div>
             <div class="form-group">
                 <label>Complément d'adresse</label>
-                <input type="text" class="form-control" name="complement_rue_locataire" value="<?php echo htmlspecialchars($_POST['complement_rue_locataire'] ?? ''); ?>">
+                <input type="text" class="form-control" name="complement_rue_locataire" value="<?php echo htmlspecialchars($_POST['complement_rue_locataire'] ?? ''); ?>" placeholder="Optionnel (app., bâtiment, etc.)">
             </div>
             <div class="form-group">
                 <label>Commune</label>
@@ -211,9 +392,15 @@ $_SESSION['captcha_question'] = "Combien font $a + $b ?";
                 <label>Raison Sociale</label>
                 <input type="text" class="form-control" name="raison_sociale" value="<?php echo htmlspecialchars($_POST['raison_sociale'] ?? ''); ?>">
             </div>
+            <div class="form-group" id="morale-siren" style="display:<?php echo (isset($_POST['type']) && $_POST['type'] === 'morale') ? 'block' : 'none'; ?>;">
+                <label>SIREN</label>
+                <input type="text" class="form-control" name="siren" id="siren" value="<?php echo htmlspecialchars($_POST['siren'] ?? ''); ?>" maxlength="9" placeholder="9 chiffres">
+                <small id="siren-info"></small>
+            </div>
             <div class="form-group" id="morale-siret" style="display:<?php echo (isset($_POST['type']) && $_POST['type'] === 'morale') ? 'block' : 'none'; ?>;">
                 <label>SIRET</label>
-                <input type="text" class="form-control" name="siret" value="<?php echo htmlspecialchars($_POST['siret'] ?? ''); ?>">
+                <input type="text" class="form-control" name="siret" value="<?php echo htmlspecialchars($_POST['siret'] ?? ''); ?>" maxlength="14" placeholder="14 chiffres">
+                <small>Le SIRET contient le SIREN suivi du numéro d'établissement</small>
             </div>
             <div class="form-group">
                 <label for="password_locataire">Mot de passe</label>
