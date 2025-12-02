@@ -5,13 +5,13 @@ $pdo = $pdo ?? null;
 $biens = [];
 $pts_interet = [];
 if ($pdo) {
-    // Use correct Photos primary key column name (id_photo) from the schema
-    $stmt = $pdo->query("SELECT b.id_biens, b.nom_biens, b.description_biens, b.superficie_biens, b.nb_couchage, c.latitude_commune, c.longitude_commune, c.nom_commune, p.lien_photo
+    // Get biens with their streets and commune info; will fetch precise coordinates from adresse API client-side
+    $stmt = $pdo->query("SELECT b.id_biens, b.nom_biens, b.rue_biens, b.description_biens, b.superficie_biens, b.nb_couchage, c.latitude_commune, c.longitude_commune, c.nom_commune, c.id_commune, p.lien_photo
         FROM Biens b
         LEFT JOIN Commune c ON b.id_commune = c.id_commune
         LEFT JOIN Photos p ON b.id_biens = p.id_biens
         LEFT JOIN (SELECT id_biens, MIN(id_photo) as min_id FROM Photos GROUP BY id_biens) min_p ON p.id_biens = min_p.id_biens AND p.id_photo = min_p.min_id
-        WHERE c.latitude_commune IS NOT NULL AND c.longitude_commune IS NOT NULL");
+        WHERE (b.is_hidden IS NULL OR b.is_hidden = FALSE)");
     $biens = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Fetch points of interest with coordinates
@@ -115,17 +115,79 @@ if ($pdo) {
             return popupContent;
         }
 
+        // Cache for bien coordinates (bien id => {lat, lon})
+        const coordCache = new Map();
+
+        // Fetch precise coordinates for a bien from adresse API using street + commune
+        function fetchBienCoordinates(bien, callback) {
+            const id = parseInt(bien.id_biens, 10);
+            if (coordCache.has(id)) {
+                return callback(coordCache.get(id));
+            }
+
+            const rue = bien.rue_biens || '';
+            const ville = bien.nom_commune || '';
+            const q = (rue + ' ' + ville).trim();
+            if (!q || !rue) {
+                // fallback to commune coordinates
+                const lat = parseFloat(bien.latitude_commune);
+                const lon = parseFloat(bien.longitude_commune);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    coordCache.set(id, { lat: lat, lon: lon });
+                    return callback({ lat: lat, lon: lon });
+                }
+                return callback(null);
+            }
+
+            fetch('https://api-adresse.data.gouv.fr/search/?q=' + encodeURIComponent(q) + '&limit=5')
+                .then(r => r.json())
+                .then(data => {
+                    const features = data && data.features ? data.features : [];
+                    // prefer Point geometry
+                    let f = features.find(feat => feat.geometry && feat.geometry.type === 'Point');
+                    if (!f) f = features[0];
+                    if (f && f.geometry && f.geometry.coordinates) {
+                        const c = f.geometry.coordinates;
+                        const result = { lat: c[1], lon: c[0] };
+                        coordCache.set(id, result);
+                        return callback(result);
+                    }
+                    // fallback to commune if no result
+                    const lat = parseFloat(bien.latitude_commune);
+                    const lon = parseFloat(bien.longitude_commune);
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        coordCache.set(id, { lat: lat, lon: lon });
+                        return callback({ lat: lat, lon: lon });
+                    }
+                    return callback(null);
+                })
+                .catch(err => {
+                    // fallback to commune on error
+                    const lat = parseFloat(bien.latitude_commune);
+                    const lon = parseFloat(bien.longitude_commune);
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        coordCache.set(id, { lat: lat, lon: lon });
+                        return callback({ lat: lat, lon: lon });
+                    }
+                    return callback(null);
+                });
+        }
+
         function addBiensMarkers(items) {
             biensMarkerGroup.clearLayers();
             const seenIds = new Set();
-            for (const b of items) {
-                const lat = parseFloat(b.latitude_commune);
-                const lon = parseFloat(b.longitude_commune);
+            let pendingCount = items.length;
+
+            function tryAddMarker(b, coords) {
+                if (!coords) return;
+                const lat = coords.lat;
+                const lon = coords.lon;
                 const id = parseInt(b.id_biens, 10);
-                if (isNaN(lat) || isNaN(lon) || isNaN(id)) continue;
-                if (seenIds.has(id)) continue; // avoid duplicates
+                if (isNaN(lat) || isNaN(lon) || isNaN(id)) return;
+                if (seenIds.has(id)) return;
                 seenIds.add(id);
 
+                // marker for precise location
                 const marker = L.circleMarker([lat, lon], {
                     color: '#a100b8',
                     fillColor: '#a100b8',
@@ -133,41 +195,58 @@ if ($pdo) {
                     radius: 8
                 });
 
+                // small zone around the street location
+                const zone = L.circle([lat, lon], {
+                    radius: 30,
+                    color: '#a100b8',
+                    weight: 1,
+                    opacity: 0.4,
+                    fillOpacity: 0.08
+                });
+
                 marker.bindPopup(createPopupContent(b));
-                // keep reference to open specific popups later
                 markerById.set(id, marker);
-                // Keep popup open while hovering marker OR popup so user can click links.
+
+                // Keep popup open while hovering marker OR popup
                 (function(m) {
                     let closeTimeout = null;
-
                     function clearClose() {
                         if (closeTimeout) { clearTimeout(closeTimeout); closeTimeout = null; }
                     }
-
                     m.on('mouseover', function() {
                         clearClose();
                         m.openPopup();
                     });
-
                     m.on('mouseout', function() {
-                        // delay close to allow moving into the popup
                         clearClose();
                         closeTimeout = setTimeout(function() { m.closePopup(); }, 300);
                     });
-
                     m.on('popupopen', function(e) {
                         const px = e.popup.getElement();
                         if (!px) return;
-                        px.addEventListener('mouseenter', function() {
-                            clearClose();
-                        });
+                        px.addEventListener('mouseenter', function() { clearClose(); });
                         px.addEventListener('mouseleave', function() {
                             clearClose();
                             closeTimeout = setTimeout(function() { m.closePopup(); }, 300);
                         });
                     });
                 })(marker);
+
+                biensMarkerGroup.addLayer(zone);
                 biensMarkerGroup.addLayer(marker);
+            }
+
+            if (items.length === 0) {
+                pendingCount = 0;
+            }
+
+            for (const b of items) {
+                (function(bien) {
+                    fetchBienCoordinates(bien, function(coords) {
+                        tryAddMarker(bien, coords);
+                        pendingCount--;
+                    });
+                })(b);
             }
         }
 

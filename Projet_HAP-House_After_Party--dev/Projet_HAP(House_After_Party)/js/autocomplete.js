@@ -154,3 +154,41 @@ function initAddCompositionAutocomplete() {
         }
     });
 }
+
+// Autocomplete for full addresses using adresse.data.gouv.fr
+function initAddressAutocomplete(selector, onSelectCallback) {
+    $(selector).autocomplete({
+        source: function(request, response) {
+            $.ajax({
+                url: 'https://api-adresse.data.gouv.fr/search/',
+                dataType: 'json',
+                data: {
+                    q: request.term,
+                    limit: 6
+                },
+                success: function(data) {
+                    const results = (data.features || []).map(function(f) {
+                        return {
+                            label: f.properties.label,
+                            value: f.properties.name || f.properties.label,
+                            postcode: f.properties.postcode,
+                            city: f.properties.city,
+                            context: f.properties.context,
+                            properties: f.properties
+                        };
+                    });
+                    response(results);
+                },
+                error: function() { response([]); }
+            });
+        },
+        minLength: 3,
+        select: function(event, ui) {
+            $(selector).val(ui.item.label);
+            if (typeof onSelectCallback === 'function') {
+                onSelectCallback(ui.item);
+            }
+            return false;
+        }
+    });
+}

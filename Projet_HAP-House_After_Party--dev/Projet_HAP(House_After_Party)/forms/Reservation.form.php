@@ -4,6 +4,9 @@ require_once __DIR__ . '/../config/db.php';
 
 $message = '';
 
+$filterBien = trim($_GET['filter_bien'] ?? '');
+$filterDate = trim($_GET['filter_date'] ?? '');
+
 try {
     $pdo = $pdo ?? null;
     $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'animateur';
@@ -89,15 +92,29 @@ try {
 
         // Récupération des réservations
         $reservations = [];
+        $where = [];
+        $params = [];
+        if ($filterBien) {
+            $where[] = 'b.nom_biens LIKE ?';
+            $params[] = '%' . $filterBien . '%';
+        }
+        if ($filterDate) {
+            $where[] = '(r.date_debut_reservation <= ? AND r.date_fin_reservation >= ?)';
+            $params[] = $filterDate;
+            $params[] = $filterDate;
+        }
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
         if ($isAdmin) {
-            $stmt = $pdo->query('SELECT r.*, l.nom_locataire, l.prenom_locataire, b.nom_biens FROM Reservation r LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire LEFT JOIN Biens b ON r.id_biens = b.id_biens ORDER BY r.id_reservation DESC');
+            $stmt = $pdo->prepare("SELECT r.*, l.nom_locataire, l.prenom_locataire, b.nom_biens FROM Reservation r LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire LEFT JOIN Biens b ON r.id_biens = b.id_biens $whereSql ORDER BY r.id_reservation DESC");
+            $stmt->execute($params);
             $reservations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } else {
-            if ($currentUserId) {
-                $stmt = $pdo->prepare('SELECT r.*, l.nom_locataire, l.prenom_locataire, b.nom_biens FROM Reservation r LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire LEFT JOIN Biens b ON r.id_biens = b.id_biens WHERE r.id_locataire = ? ORDER BY r.id_reservation DESC');
-                $stmt->execute([$currentUserId]);
-                $reservations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            }
+        } else if ($currentUserId) {
+            $where[] = 'r.id_locataire = ?';
+            $params[] = $currentUserId;
+            $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+            $stmt = $pdo->prepare("SELECT r.*, l.nom_locataire, l.prenom_locataire, b.nom_biens FROM Reservation r LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire LEFT JOIN Biens b ON r.id_biens = b.id_biens $whereSql ORDER BY r.id_reservation DESC");
+            $stmt->execute($params);
+            $reservations = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         // Récupération des locataires, biens, tarifs pour les selects (admins)
@@ -227,6 +244,11 @@ try {
                 <?php endforeach; ?>
             </select>
             <input type="submit" name="add_reservation" value="Ajouter">
+        </form>
+        <form method="get" style="margin-bottom:18px;display:flex;gap:12px;align-items:center;">
+            <input type="text" name="filter_bien" placeholder="Filtrer par nom de bien..." value="<?= htmlspecialchars($filterBien) ?>" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;">
+            <input type="date" name="filter_date" value="<?= htmlspecialchars($filterDate) ?>" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;">
+            <button type="submit" style="padding:8px 18px;border-radius:6px;background:#a100b8;color:#fff;border:none;">Filtrer</button>
         </form>
         <div class="reservation-list">
             <table>

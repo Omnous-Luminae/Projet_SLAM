@@ -40,21 +40,42 @@ try {
         $totalReviews = intval($countStmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
         $totalPages = $totalReviews > 0 ? ceil($totalReviews / $perPage) : 1;
 
+        // Filtres pour la recherche d'avis
+        $filterBien = trim($_GET['filter_bien'] ?? '');
+        $filterNote = trim($_GET['filter_note'] ?? '');
+
         // Load reviews page with bien info and user details
+        $where = [];
+        $params = [];
+        if ($filterBien) {
+            $where[] = 'b.nom_biens LIKE ?';
+            $params[] = '%' . $filterBien . '%';
+        }
+        if ($filterNote && in_array($filterNote, ['1','2','3','4','5'])) {
+            $where[] = 'r.rating = ?';
+            $params[] = intval($filterNote);
+        }
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
         $sql = "SELECT r.id_review, r.rating, r.content, r.created_at, b.nom_biens,
-                CASE
-                    WHEN l.id_locataire IS NOT NULL THEN CONCAT(l.prenom_locataire, ' ', l.nom_locataire)
-                    ELSE CONCAT(a.prenom_animateur, ' ', a.nom_animateur)
-                END as nom_complet
-            FROM Reviews r
-            LEFT JOIN Biens b ON r.id_biens = b.id_biens
-            LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire
-            LEFT JOIN Animateur a ON r.id_locataire = a.id_animateur
-            ORDER BY r.created_at DESC
-            LIMIT :limit OFFSET :offset";
+                    CASE
+                        WHEN l.id_locataire IS NOT NULL THEN CONCAT(l.prenom_locataire, ' ', l.nom_locataire)
+                        ELSE CONCAT(a.prenom_animateur, ' ', a.nom_animateur)
+                    END as nom_complet
+                FROM Reviews r
+                LEFT JOIN Biens b ON r.id_biens = b.id_biens
+                LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire
+                LEFT JOIN Animateur a ON r.id_locataire = a.id_animateur
+                $whereSql
+                ORDER BY r.created_at DESC
+                LIMIT ? OFFSET ?";
         $stmt = $pdo->prepare($sql);
-        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $paramIndex = 1;
+        foreach ($params as $v) {
+            $stmt->bindValue($paramIndex, $v);
+            $paramIndex++;
+        }
+        $stmt->bindValue($paramIndex, $perPage, PDO::PARAM_INT);
+        $stmt->bindValue($paramIndex + 1, $offset, PDO::PARAM_INT);
         $stmt->execute();
         $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -120,6 +141,21 @@ try {
             <?php endif; ?>
         </div>
 
+        <!-- FILTRE AVIS AMÉLIORÉ -->
+        <div class="filter-section" style="margin:32px auto 24px auto;max-width:700px;">
+            <form method="get" style="display:flex;gap:14px;align-items:center;justify-content:center;background:#f3e6fa;padding:20px 24px;border-radius:10px;box-shadow:0 2px 12px rgba(161,0,184,0.1);border:1px solid #e0aaff;">
+                <input type="text" name="filter_bien" placeholder="Filtrer par nom de bien..." value="<?= htmlspecialchars($filterBien) ?>" style="padding:11px 16px;border-radius:6px;border:1.5px solid #a100b8;font-size:1.08em;min-width:200px;background:#fff;transition:border 0.2s;">
+                <label style="font-weight:600;color:#a100b8;margin:0;">Note :</label>
+                <select name="filter_note" onchange="this.form.submit()" style="padding:11px 16px;border-radius:6px;border:1.5px solid #a100b8;font-size:1.08em;background:#fff;transition:border 0.2s;">
+                    <option value="">Toutes les notes</option>
+                    <?php for($i=5;$i>=1;$i--): ?>
+                        <option value="<?= $i ?>" <?= ($filterNote==$i)?'selected':''; ?>><?= $i ?> ★</option>
+                    <?php endfor; ?>
+                </select>
+                <button type="submit" style="padding:11px 32px;border-radius:6px;background:linear-gradient(90deg, #a100b8 60%, #e0aaff 100%);color:#fff;border:none;font-weight:600;font-size:1.08em;box-shadow:0 2px 8px rgba(161,0,184,0.15);cursor:pointer;transition:background 0.2s;">Filtrer</button>
+            </form>
+        </div>
+
         <div class="reviews-section">
             <h3>Derniers avis</h3>
         <?php if (!empty($reviews)): foreach ($reviews as $rev): ?>
@@ -157,10 +193,10 @@ try {
         <?php endif; ?>
     </div>
 
-<script>
-    $(function(){
-        initBiensAutocomplete('#bien_input', '#bien_id');
-    });
-</script>
+    <script>
+        $(function(){
+            initBiensAutocomplete('#bien_input', '#bien_id');
+        });
+    </script>
 </body>
 </html>

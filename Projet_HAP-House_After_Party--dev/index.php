@@ -51,7 +51,6 @@ require_once __DIR__ . '/Projet_HAP(House_After_Party)/config/db.php';
         <div class="hero-btns">
             <a href="Projet_HAP(House_After_Party)/forms/Annonce.form.php">Voir les logements</a>
             <a href="Projet_HAP(House_After_Party)/forms/Evenement.form.php">Événements à proximité</a>
-            <a href="Projet_HAP(House_After_Party)/forms/Reservation.form.php">Réserver maintenant</a>
         </div>
         <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80" alt="Soirée" class="hero-bg">
     </section>
