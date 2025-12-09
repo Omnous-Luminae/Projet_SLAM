@@ -10,17 +10,19 @@ if (!isset($_SESSION['user_id'])) {
 $id_bien = intval($_GET['id_bien'] ?? 0);
 $selectedYear = intval($_GET['year'] ?? date('Y'));
 $userId = intval($_SESSION['user_id']);
+$userRole = $_SESSION['user_role'] ?? 'user';
+$isAdmin = $userRole === 'admin' || (isset($_SESSION['role']) && $_SESSION['role'] === 'animateur');
 $message = '';
 
 try {
     $pdo = $pdo ?? null;
     if ($pdo) {
-        // Verify ownership
+        // Verify ownership or admin access
         $bienStmt = $pdo->prepare('SELECT created_by_id, nom_biens FROM Biens WHERE id_biens = ?');
         $bienStmt->execute([$id_bien]);
         $bien = $bienStmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$bien || $bien['created_by_id'] != $userId) {
+        if (!$bien || (!$isAdmin && $bien['created_by_id'] != $userId)) {
             header('Location: Annonce.form.php');
             exit;
         }
