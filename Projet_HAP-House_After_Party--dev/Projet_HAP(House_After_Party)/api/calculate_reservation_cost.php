@@ -28,26 +28,21 @@ try {
     $total = 0;
     $current = clone $start;
 
-    // Map weeks to seasons (approximate for northern hemisphere)
-    $seasonMap = [
-        'Hiver' => [1, 2, 3, 52],
-        'Printemps' => [13, 14, 15, 16, 17],
-        'Été' => [23, 24, 25, 26, 27],
-        'Automne' => [35, 36, 37, 38, 39]
-    ];
-
     while ($current < $end) {
         $dateStr = $current->format('Y-m-d');
         $week = intval($current->format('W'));
         $year = intval($current->format('Y'));
+        $month = intval($current->format('m'));
 
-        // Determine season
-        $season = null;
-        foreach ($seasonMap as $s => $weeks) {
-            if (in_array($week, $weeks)) {
-                $season = $s;
-                break;
-            }
+        // Determine season based on month
+        if ($month >= 3 && $month <= 5) {
+            $season = 'Printemps';
+        } elseif ($month >= 6 && $month <= 8) {
+            $season = 'Été';
+        } elseif ($month >= 9 && $month <= 11) {
+            $season = 'Automne';
+        } else {
+            $season = 'Hiver';
         }
 
         // Try to get specific tarif for this week

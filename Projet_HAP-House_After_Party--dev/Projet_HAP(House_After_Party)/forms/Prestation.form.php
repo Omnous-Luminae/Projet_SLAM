@@ -48,72 +48,123 @@ try {
     <meta charset="UTF-8">
     <title>Gestion des Prestations</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../Css/forms.css">
     <style>
-        body { font-family: 'Montserrat', Arial, sans-serif; background: #f7f7f9; margin: 0; }
-        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 18px; box-shadow: 0 2px 16px rgba(80,0,80,0.06); padding: 40px 30px; }
-        h2 { text-align: center; margin-bottom: 28px; }
-        form { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
-        input[type="text"] { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
-        input[type="submit"], button { background: #a100b8; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-weight: 600; cursor: pointer; }
-        input[type="submit"]:hover, button:hover { background: #4b006e; }
-        .prestation-list { margin-top: 20px; }
-        .prestation-list table { border-collapse: collapse; width: 100%; }
-        .prestation-list th, .prestation-list td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
-        .prestation-list th { background: #f3e6fa; }
-        .success { color: green; text-align: center; margin-bottom: 18px; }
-        .back-link { display: block; margin-bottom: 18px; color: #a100b8; text-decoration: none; font-weight: 600; }
-        .back-link:hover { text-decoration: underline; }
+        .prestation-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+            align-items: end;
+        }
+        .prestation-form input[type="text"] {
+            min-width: 250px;
+        }
+        .prestation-list {
+            margin-top: 40px;
+        }
+        .prestation-list table {
+            border-collapse: collapse;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        .prestation-list th,
+        .prestation-list td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid #e1e1e1;
+        }
+        .prestation-list th {
+            background: linear-gradient(135deg, #a100b8, #d100e8);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+        }
+        .prestation-list tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .prestation-list tr:hover {
+            background: rgba(161, 0, 184, 0.05);
+            transition: background 0.3s ease;
+        }
+        .prestation-list .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
-        <h2>Gestion des Prestations</h2>
-        <?php if ($message): ?>
-            <div class="success"><?= htmlspecialchars($message) ?></div>
-        <?php endif; ?>
-        <form method="post">
-            <input type="text" id="lib_prestation" name="lib_prestation" placeholder="Nom de la prestation" required>
-            <input type="submit" name="add_prestation" value="Ajouter">
-        </form>
-        <div class="prestation-list">
-            <table>
-                <tr>
-                    <th>ID</th>
-                    <th>Nom</th>
-                    <th>Actions</th>
-                </tr>
-                <?php foreach ($prestations as $p): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($p['id_prestation']) ?></td>
-                        <td>
-                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $p['id_prestation']): ?>
-                                <form method="post" style="display:inline;">
-                                    <input type="hidden" name="id_prestation" value="<?= htmlspecialchars($p['id_prestation']) ?>">
-                                    <input type="text" name="lib_prestation_edit" value="<?= htmlspecialchars($p['lib_prestation']) ?>" required>
-                                    <button type="submit" name="edit_prestation">Enregistrer</button>
-                                </form>
-                            <?php else: ?>
-                                <?= htmlspecialchars($p['lib_prestation']) ?>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $p['id_prestation']): ?>
-                            <?php else: ?>
-                                <form method="post" style="display:inline;">
-                                    <input type="hidden" name="edit_mode" value="<?= htmlspecialchars($p['id_prestation']) ?>">
-                                    <button type="submit">Modifier</button>
-                                </form>
-                                <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer cette prestation ?');">
-                                    <input type="hidden" name="id_prestation" value="<?= htmlspecialchars($p['id_prestation']) ?>">
-                                    <button type="submit" name="delete_prestation">Supprimer</button>
-                                </form>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
+        <div class="header">
+            <h2>🎭 Gestion des Prestations</h2>
+            <p>Gérez les prestations disponibles pour les biens</p>
         </div>
+        <a href="../../index.php" class="back-link">&larr; Retour à l'accueil</a>
+
+        <?php if ($message): ?>
+            <div class="message success"><?= htmlspecialchars($message) ?></div>
+        <?php endif; ?>
+
+        <section class="form-section">
+            <h3>Ajouter une nouvelle prestation</h3>
+            <form method="post" class="prestation-form">
+                <input type="text" id="lib_prestation" name="lib_prestation" placeholder="Nom de la prestation" required>
+                <button type="submit" name="add_prestation" class="btn btn-primary">Ajouter</button>
+            </form>
+        </section>
+
+        <section class="data-section">
+            <h3>Prestations existantes</h3>
+            <div class="prestation-list">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($prestations as $p): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($p['id_prestation']) ?></td>
+                                <td>
+                                    <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $p['id_prestation']): ?>
+                                        <form method="post" style="display:inline;">
+                                            <input type="hidden" name="id_prestation" value="<?= htmlspecialchars($p['id_prestation']) ?>">
+                                            <input type="text" name="lib_prestation_edit" value="<?= htmlspecialchars($p['lib_prestation']) ?>" required>
+                                            <button type="submit" name="edit_prestation" class="btn btn-primary">Enregistrer</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <?= htmlspecialchars($p['lib_prestation']) ?>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="actions">
+                                    <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $p['id_prestation']): ?>
+                                        <!-- Rien, on est en mode édition -->
+                                    <?php else: ?>
+                                        <form method="post" style="display:inline;">
+                                            <input type="hidden" name="edit_mode" value="<?= htmlspecialchars($p['id_prestation']) ?>">
+                                            <button type="submit" class="btn btn-secondary">Modifier</button>
+                                        </form>
+                                        <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer cette prestation ?');">
+                                            <input type="hidden" name="id_prestation" value="<?= htmlspecialchars($p['id_prestation']) ?>">
+                                            <button type="submit" name="delete_prestation" class="btn btn-danger">Supprimer</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </div>
 </body>
 </html>

@@ -121,8 +121,17 @@ try {
             }
         }
 
+    // Search parameter
+    $searchBien = trim($_GET['search_bien'] ?? '');
+
     // Récupération des biens
-    $biens = $bienObj->getAllBiens();
+    if ($searchBien) {
+        $stmt = $pdo->prepare("SELECT * FROM Biens WHERE nom_biens LIKE ?");
+        $stmt->execute(['%' . $searchBien . '%']);
+        $biens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $biens = $bienObj->getAllBiens();
+    }
 
     // Récupération des prestations et saisons pour sous-formulaires
     $prestationObj = new Prestation(null, null, $pdo);
@@ -140,76 +149,183 @@ try {
     <meta charset="UTF-8">
     <title>Gestion des Biens</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../Css/forms.css">
     <style>
-        body { font-family: 'Montserrat', Arial, sans-serif; background: #f7f7f9; margin: 0; }
-        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 18px; box-shadow: 0 2px 16px rgba(80,0,80,0.06); padding: 40px 30px; }
-        h2 { text-align: center; margin-bottom: 28px; }
-        form { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
-        input[type="text"] { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
-        input[type="submit"], button { background: #a100b8; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-weight: 600; cursor: pointer; }
-        input[type="submit"]:hover, button:hover { background: #4b006e; }
-        .saison-list { margin-top: 20px; }
-        .saison-list table { border-collapse: collapse; width: 100%; }
-        .saison-list th, .saison-list td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
-        .saison-list th { background: #f3e6fa; }
-        .saison-success { color: green; text-align: center; margin-bottom: 18px; }
-        .back-link { display: block; margin-bottom: 18px; color: #a100b8; text-decoration: none; font-weight: 600; }
-        .back-link:hover { text-decoration: underline; }
+        .bien-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+            align-items: end;
+        }
+        .bien-form input[type="text"],
+        .bien-form input[type="file"] {
+            min-width: 200px;
+        }
+        .bien-list {
+            margin-top: 40px;
+        }
+        .bien-list table {
+            border-collapse: collapse;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        .bien-list th,
+        .bien-list td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid #e1e1e1;
+        }
+        .bien-list th {
+            background: linear-gradient(135deg, #a100b8, #d100e8);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+        }
+        .bien-list tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .bien-list tr:hover {
+            background: rgba(161, 0, 184, 0.05);
+            transition: background 0.3s ease;
+        }
+        .bien-list .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .manage-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            margin-top: 40px;
+        }
+        .manage-section h3 {
+            color: #333;
+            margin: 0 0 20px 0;
+            font-size: 1.5em;
+        }
+        .manage-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+            align-items: end;
+        }
+        .manage-form input,
+        .manage-form select {
+            min-width: 150px;
+        }
+        .manage-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        .manage-table th,
+        .manage-table td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid #e1e1e1;
+        }
+        .manage-table th {
+            background: linear-gradient(135deg, #a100b8, #d100e8);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+        }
+        .manage-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .manage-table tr:hover {
+            background: rgba(161, 0, 184, 0.05);
+            transition: background 0.3s ease;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
-        <h2>Gestion des biens</h2>
-        <?php if ($bienMessage): ?>
-            <div class="bien-success"><?= htmlspecialchars($bienMessage) ?></div>
-        <?php endif; ?>
-        <form method="post" enctype="multipart/form-data">
-            <input type="text" id="nom_biens" name="nom_biens" placeholder="Nom du bien" required>
-            <input type="file" name="photos[]" multiple accept="image/*">
-            <input type="submit" name="add_biens" value="Ajouter">
-        </form>
-        <div class="bien-list">
-            <table>
-                <tr>
-                    <th>ID</th>
-                    <th>Nom</th>
-                    <th>Actions</th>
-                </tr>
-                <?php foreach ($biens as $bien): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($bien['id_biens']) ?></td>
-                        <td>
-                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $bien['id_biens']): ?>
-                                <form method="post" style="display:inline;">
-                                    <input type="hidden" name="id_biens" value="<?= htmlspecialchars($bien['id_biens']) ?>">
-                                    <input type="text" name="nom_biens_edit" value="<?= htmlspecialchars($bien['nom_biens']) ?>" required>
-                                    <button type="submit" name="edit_biens">Enregistrer</button>
-                                </form>
-                            <?php else: ?>
-                                <?= htmlspecialchars($bien['nom_biens']) ?>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $bien['id_biens']): ?>
-                                <!-- Rien, on est en mode édition -->
-                            <?php else: ?>
-                                <form method="post" style="display:inline;">
-                                    <input type="hidden" name="id_biens" value="<?= htmlspecialchars($bien['id_biens']) ?>">
-                                    <button type="submit" name="edit_mode" value="<?= htmlspecialchars($bien['id_biens']) ?>">Modifier</button>
-                                </form>
-                                <a href="?manage=compose&id=<?= htmlspecialchars($bien['id_biens']) ?>" style="margin-left:6px;background:#e9ecff;color:#0b2b8a;padding:6px 10px;border-radius:6px;text-decoration:none;">Gérer composition</a>
-                                <a href="?manage=tarif&id=<?= htmlspecialchars($bien['id_biens']) ?>" style="margin-left:6px;background:#fff3e6;color:#7a4b00;padding:6px 10px;border-radius:6px;text-decoration:none;">Gérer tarifs</a>
-                                <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce bien ?');">
-                                    <input type="hidden" name="id_biens" value="<?= htmlspecialchars($bien['id_biens']) ?>">
-                                    <button type="submit" name="delete_biens">Supprimer</button>
-                                </form>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
+        <div class="header">
+            <h2>🏠 Gestion des Biens</h2>
+            <p>Gérez les biens disponibles sur la plateforme</p>
         </div>
+        <a href="../../index.php" class="back-link">&larr; Retour à l'accueil</a>
+        <?php if ($bienMessage): ?>
+            <div class="message success"><?= htmlspecialchars($bienMessage) ?></div>
+        <?php endif; ?>
+        <section class="form-section">
+            <h3>Ajouter un nouveau bien</h3>
+            <form method="post" enctype="multipart/form-data" class="bien-form">
+                <input type="text" id="nom_biens" name="nom_biens" placeholder="Nom du bien" required>
+                <input type="file" name="photos[]" multiple accept="image/*">
+                <button type="submit" name="add_biens" class="btn btn-primary">Ajouter</button>
+            </form>
+        </section>
+        <section class="data-section">
+            <h3>Biens existants</h3>
+            <!-- Search Form -->
+            <form method="get" class="filter-form">
+                <input type="text" name="search_bien" placeholder="Rechercher par nom du bien..." value="<?= htmlspecialchars($searchBien) ?>">
+                <button type="submit" class="btn btn-primary">Filtrer</button>
+                <?php if ($searchBien): ?>
+                    <a href="Bien.form.php" class="btn btn-secondary">Effacer</a>
+                <?php endif; ?>
+            </form>
+            <div class="bien-list">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($biens as $bien): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($bien['id_biens']) ?></td>
+                                <td>
+                                    <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $bien['id_biens']): ?>
+                                        <form method="post" style="display:inline;">
+                                            <input type="hidden" name="id_biens" value="<?= htmlspecialchars($bien['id_biens']) ?>">
+                                            <input type="text" name="nom_biens_edit" value="<?= htmlspecialchars($bien['nom_biens']) ?>" required>
+                                            <button type="submit" name="edit_biens" class="btn btn-primary">Enregistrer</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <?= htmlspecialchars($bien['nom_biens']) ?>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="actions">
+                                    <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $bien['id_biens']): ?>
+                                        <!-- Rien, on est en mode édition -->
+                                    <?php else: ?>
+                                        <form method="post" style="display:inline;">
+                                            <input type="hidden" name="id_biens" value="<?= htmlspecialchars($bien['id_biens']) ?>">
+                                            <button type="submit" name="edit_mode" value="<?= htmlspecialchars($bien['id_biens']) ?>" class="btn btn-secondary">Modifier</button>
+                                        </form>
+                                        <a href="?manage=compose&id=<?= htmlspecialchars($bien['id_biens']) ?>" class="btn btn-secondary">Gérer composition</a>
+                                        <a href="?manage=tarif&id=<?= htmlspecialchars($bien['id_biens']) ?>" class="btn btn-secondary">Gérer tarifs</a>
+                                        <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce bien ?');">
+                                            <input type="hidden" name="id_biens" value="<?= htmlspecialchars($bien['id_biens']) ?>">
+                                            <button type="submit" name="delete_biens" class="btn btn-danger">Supprimer</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
         <?php if (isset($_GET['manage']) && isset($_GET['id'])): ?>
             <?php $manage = $_GET['manage']; $manage_id = intval($_GET['id']); ?>

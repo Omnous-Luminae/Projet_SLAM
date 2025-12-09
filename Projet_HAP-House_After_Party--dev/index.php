@@ -94,7 +94,7 @@ require_once __DIR__ . '/Projet_HAP(House_After_Party)/config/db.php';
         </div>
     </section>
 
-    <section class="section" style="background: #f0f0f0;">
+    <section class="section">
         <h2>Comment ça marche ?</h2>
         <p style="text-align: center; margin-bottom: 40px;">
             Réservez votre logement en quelques étapes simples et profitez d'une nuit inoubliable.
@@ -142,7 +142,7 @@ require_once __DIR__ . '/Projet_HAP(House_After_Party)/config/db.php';
         </div>
     </section>
 
-    <section class="section" style="background: #f8f9fa;">
+    <section class="section">
         <h2>Témoignages de nos clients</h2>
         <p style="text-align: center; margin-bottom: 40px;">
             Découvrez ce que disent nos locataires satisfaits.
@@ -189,14 +189,14 @@ require_once __DIR__ . '/Projet_HAP(House_After_Party)/config/db.php';
             <a href="Projet_HAP(House_After_Party)/images/utiliser.php" class="btn btn-primary" style="padding: 12px 24px; font-size: 1.1em;">Voir toutes les photos</a>
         </div>
     </section>
-    <section class="section" style="background: #f8f9fa; margin-top: 0; border-radius: 0;">
+    <section class="section" style="margin-top: 0; border-radius: 0;">
         <h2 style="margin-bottom: 20px;">Prêt à vivre l'expérience HAP ?</h2>
         <p style="margin-bottom: 30px; font-size: 1.1em;">
             Rejoignez notre communauté de noctambules et réservez votre prochain logement dès maintenant !
         </p>
         <div style="text-align: center;">
             <a href="Projet_HAP(House_After_Party)/auth/inscription.php" class="btn btn-primary" style="padding: 16px 32px; font-size: 1.2em; margin-right: 20px;">S'inscrire maintenant</a>
-            <a href="Projet_HAP(House_After_Party)/auth/connexion.php" class="btn" style="padding: 16px 32px; font-size: 1.2em; background: #fff; color: #a100b8; border: 2px solid #a100b8;">Se connecter</a>
+            <a href="Projet_HAP(House_After_Party)/auth/connexion.php" class="btn" style="padding: 16px 32px; font-size: 1.2em; background: var(--btn-login-bg); color: var(--logo-color); border: 2px solid var(--logo-color);">Se connecter</a>
         </div>
     </section>
     <footer>
@@ -211,6 +211,8 @@ require_once __DIR__ . '/Projet_HAP(House_After_Party)/config/db.php';
     </footer>
     <!-- Lightbox JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
+
+    <?php include 'theme_toggle.php'; ?>
     <script>
     // Custom lightweight gallery modal to ensure reliable navigation and return-to-gallery behavior
     document.addEventListener('DOMContentLoaded', function() {

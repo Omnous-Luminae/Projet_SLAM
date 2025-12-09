@@ -7,6 +7,8 @@ private $id_animateur = "";
 private $nom_animateur= "";
 private $prenom_animateur = "";
 private $email_animateur = "";
+private $telephone_animateur = "";
+private $date_naissance_animateur = "";
 private $password_animateur = "";
 private $pdo;
 
@@ -16,6 +18,8 @@ public function __construct($pdo, $animateurData = []){
     $this->nom_animateur = $animateurData['nom_animateur'] ?? "";
     $this->prenom_animateur = $animateurData['prenom_animateur'] ?? "";
     $this->email_animateur = $animateurData['email_animateur'] ?? "";
+    $this->telephone_animateur = $animateurData['telephone_animateur'] ?? "";
+    $this->date_naissance_animateur = $animateurData['date_naissance_animateur'] ?? "";
     $this->password_animateur = $animateurData['password_animateur'] ?? "";
 }
 
@@ -23,24 +27,30 @@ public function getIdAnimateur() {return $this->id_animateur;}
 public function getNomAnimateur() {return $this->nom_animateur;}
 public function getPrenomAnimateur() {return $this->prenom_animateur;}
 public function getEmailAnimateur() {return $this->email_animateur;}
+public function getTelephoneAnimateur() {return $this->telephone_animateur;}
+public function getDateNaissanceAnimateur() {return $this->date_naissance_animateur;}
 public function getPasswordAnimateur() {return $this->password_animateur;}
 
 public function setNomAnimateur($nom_animateur) {$this->nom_animateur = $nom_animateur;}
 public function setPrenomAnimateur($prenom_animateur) {$this->prenom_animateur = $prenom_animateur;}
 public function setEmailAnimateur($email_animateur) {$this->email_animateur = $email_animateur;}
+public function setTelephoneAnimateur($telephone_animateur) {$this->telephone_animateur = $telephone_animateur;}
+public function setDateNaissanceAnimateur($date_naissance_animateur) {$this->date_naissance_animateur = $date_naissance_animateur;}
 public function setPasswordAnimateur($password_animateur) {$this->password_animateur = $password_animateur;}
 
 // CREATE
-public function createAnimateur($nom_animateur, $prenom_animateur, $email_animateur, $password_animateur)
+public function createAnimateur($nom_animateur, $prenom_animateur, $email_animateur, $telephone_animateur, $date_naissance_animateur, $password_animateur)
 {
     $stmt = $this->pdo->prepare(
-        "INSERT INTO Animateur (nom_animateur, prenom_animateur, email_animateur, password_animateur)
-        VALUES (:nom, :prenom, :email, :password)"
+        "INSERT INTO Animateur (nom_animateur, prenom_animateur, email_animateur, telephone_animateur, date_naissance_animateur, password_animateur)
+        VALUES (:nom, :prenom, :email, :telephone, :date_naissance, :password)"
     );
     return $stmt->execute([
         'nom' => $nom_animateur,
         'prenom' => $prenom_animateur,
         'email' => $email_animateur,
+        'telephone' => $telephone_animateur,
+        'date_naissance' => $date_naissance_animateur,
         'password' => $password_animateur
     ]);
 }

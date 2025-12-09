@@ -5,6 +5,15 @@ require_once __DIR__ . '/../classes/Locataire/Locataire.php';
 session_start();
 
 $message = '';
+if (isset($_GET['redirect_from']) && $_GET['redirect_from'] === 'reservation') {
+    $message = "Vous devez être connecté pour effectuer une réservation.";
+}
+if (isset($_SESSION['redirect_message'])) {
+    $message = $_SESSION['redirect_message'];
+}
+if ($message && !isset($_SESSION['redirect_message'])) {
+    $_SESSION['redirect_message'] = $message;
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     $email = trim($_POST['email'] ?? '');
     $password = trim($_POST['password'] ?? '');
@@ -53,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
         <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
         <h2>Connexion</h2>
         <?php if ($message): ?>
-            <div class="message error">
+            <div class="message info">
                 <?= htmlspecialchars($message) ?>
             </div>
         <?php endif; ?>
@@ -72,8 +81,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
         </form>
         <div class="auth-link">
             <p>Mot de passe oublié ? <a href="forgot_password.php">Réinitialiser ici</a>.</p>
-            <p>Pas encore de compte ? <a href="inscription.php">Inscrivez-vous ici</a>.</p>
+            <p>Pas encore de compte ? <a href="inscription.php<?php echo isset($_GET['redirect_from']) ? '?redirect_from=' . urlencode($_GET['redirect_from']) : ''; ?>">Inscrivez-vous ici</a>.</p>
         </div>
     </div>
+
+    <?php include '../../theme_toggle.php'; ?>
 </body>
 </html>

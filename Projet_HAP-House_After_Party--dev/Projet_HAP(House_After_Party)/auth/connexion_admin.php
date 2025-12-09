@@ -85,5 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_admin'])) {
                 }
             });
         </script>
+    <?php include '../../theme_toggle.php'; ?>
     </body>
 </html>

@@ -2,22 +2,134 @@
    ANNONCE.CSS - Dedicated Styles for Announcements
    =========================================== */
 
+:root {
+    --bg-color: #f7f7f9;
+    --text-color: #333;
+    --header-bg: #fff;
+    --header-text: #3d0066;
+    --logo-color: #a100b8;
+    --nav-hover-bg: #f3e6fa;
+    --nav-hover-text: #a100b8;
+    --btn-login-bg: #fff;
+    --btn-login-border: #bbb;
+    --btn-login-hover-bg: #f3e6fa;
+    --btn-login-hover-text: #a100b8;
+    --btn-logout-bg: #dc3545;
+    --btn-logout-text: #fff;
+    --btn-admin-bg: #28a745;
+    --btn-admin-text: #fff;
+    --welcome-color: #a100b8;
+    --hero-bg: linear-gradient(90deg, #a100b8 0%, #4b006e 100%);
+    --hero-text: #fff;
+    --section-bg: #fff;
+    --section-text: #555;
+    --card-bg: #faf7fd;
+    --card-shadow: rgba(80,0,80,0.06);
+    --step-bg: #fff;
+    --step-number-bg: #a100b8;
+    --step-number-text: #fff;
+    --step-text: #a100b8;
+    --destination-bg: #fff;
+    --destination-text: #666;
+    --testimonial-bg: #fff;
+    --testimonial-text: #555;
+    --testimonial-quote: rgba(161, 0, 184, 0.2);
+    --footer-bg: #fff;
+    --footer-text: #888;
+    --auth-bg: #fff;
+    --auth-text: #333;
+    --form-bg: #fff;
+    --form-border: #ddd;
+    --form-focus-border: #a100b8;
+    --btn-primary-bg: #a100b8;
+    --btn-primary-text: #fff;
+    --btn-primary-hover: #4b006e;
+    --message-error-bg: #f8d7da;
+    --message-error-text: #721c24;
+    --message-success-bg: #d4edda;
+    --message-success-text: #155724;
+    --message-info-bg: #d1ecf1;
+    --message-info-text: #0c5460;
+    --gallery-bg: #f7f7f9;
+    --modal-bg: rgba(0,0,0,0.8);
+    --modal-text: #fff;
+    --modal-close-bg: rgba(0,0,0,0.5);
+    --modal-close-text: #fff;
+}
+
+[data-theme="dark"] {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --header-bg: #1e1e1e;
+    --header-text: #c0c0c0;
+    --logo-color: #bb86fc;
+    --nav-hover-bg: #333;
+    --nav-hover-text: #bb86fc;
+    --btn-login-bg: #333;
+    --btn-login-border: #666;
+    --btn-login-hover-bg: #444;
+    --btn-login-hover-text: #bb86fc;
+    --btn-logout-bg: #cf6679;
+    --btn-logout-text: #000;
+    --btn-admin-bg: #4caf50;
+    --btn-admin-text: #000;
+    --welcome-color: #bb86fc;
+    --hero-bg: linear-gradient(90deg, #bb86fc 0%, #6200ea 100%);
+    --hero-text: #e0e0e0;
+    --section-bg: #1e1e1e;
+    --section-text: #c0c0c0;
+    --card-bg: #2a2a2a;
+    --card-shadow: rgba(0,0,0,0.3);
+    --step-bg: #2a2a2a;
+    --step-number-bg: #bb86fc;
+    --step-number-text: #000;
+    --step-text: #bb86fc;
+    --destination-bg: #2a2a2a;
+    --destination-text: #c0c0c0;
+    --testimonial-bg: #2a2a2a;
+    --testimonial-text: #c0c0c0;
+    --testimonial-quote: rgba(187, 134, 252, 0.3);
+    --footer-bg: #1e1e1e;
+    --footer-text: #888;
+    --auth-bg: #2a2a2a;
+    --auth-text: #e0e0e0;
+    --form-bg: #333;
+    --form-border: #666;
+    --form-focus-border: #bb86fc;
+    --btn-primary-bg: #bb86fc;
+    --btn-primary-text: #000;
+    --btn-primary-hover: #9c27b0;
+    --message-error-bg: #cf6679;
+    --message-error-text: #000;
+    --message-success-bg: #4caf50;
+    --message-success-text: #000;
+    --message-info-bg: #03dac6;
+    --message-info-text: #000;
+    --gallery-bg: #1e1e1e;
+    --modal-bg: rgba(0,0,0,0.9);
+    --modal-text: #e0e0e0;
+    --modal-close-bg: rgba(255,255,255,0.2);
+    --modal-close-text: #e0e0e0;
+}
+
 /* ===== GENERAL STYLES ===== */
 body {
     font-family: 'Montserrat', Arial, sans-serif;
-    background: linear-gradient(135deg, #f7f7f9 0%, #e8e8f0 100%);
+    background: linear-gradient(135deg, var(--bg-color) 0%, #e8e8f0 100%);
     margin: 0;
     padding: 20px;
     min-height: 100vh;
     line-height: 1.6;
+    color: var(--text-color);
+    transition: background 0.3s, color 0.3s;
 }
 
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    background: var(--section-bg);
     border-radius: 24px;
-    box-shadow: 0 20px 60px rgba(80,0,80,0.12), 0 8px 24px rgba(0,0,0,0.08);
+    box-shadow: 0 20px 60px var(--card-shadow), 0 8px 24px rgba(0,0,0,0.08);
     padding: 50px;
     overflow: hidden;
     position: relative;
@@ -72,7 +184,7 @@ h2 {
 
 .form-section {
     margin-bottom: 40px;
-    background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,0.95) 100%);
+    background: var(--section-bg);
     border-radius: 16px;
     padding: 30px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.06);
@@ -235,10 +347,10 @@ button:hover {
 }
 
 .annonce-card {
-    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    background: var(--card-bg);
     border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 32px var(--card-shadow), 0 4px 16px rgba(0,0,0,0.08);
     transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     cursor: pointer;
     text-decoration: none;
@@ -295,7 +407,7 @@ button:hover {
 
 .annonce-content {
     padding: 24px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,0.95) 100%);
+    background: var(--section-bg);
 }
 
 .annonce-title {
@@ -351,7 +463,7 @@ button:hover {
     font-style: italic;
     font-size: 18px;
     padding: 60px 40px;
-    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+    background: var(--section-bg);
     border-radius: 16px;
     border: 2px dashed #e2e8f0;
     margin-top: 40px;
@@ -408,7 +520,7 @@ button:hover {
 }
 
 .detail-section {
-    background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,0.95) 100%);
+    background: var(--section-bg);
     border-radius: 20px;
     padding: 35px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.08);
@@ -463,7 +575,7 @@ button:hover {
 
 .description {
     grid-column: 1 / -1;
-    background: linear-gradient(145deg, rgba(255,255,255,0.98) 0%, rgba(248,249,250,0.98) 100%);
+    background: var(--section-bg);
 }
 
 .description p {
@@ -518,7 +630,7 @@ button:hover {
 /* ===== SEARCH AND FILTER STYLES ===== */
 .search-section {
     margin-bottom: 40px;
-    background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,0.95) 100%);
+    background: var(--section-bg);
     border-radius: 16px;
     padding: 30px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.06);
@@ -619,7 +731,7 @@ button:hover {
     min-width: 40px;
     height: 40px;
     padding: 8px 12px;
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    background: var(--section-bg);
     color: #4a5568;
     text-decoration: none;
     border-radius: 12px;
@@ -668,7 +780,7 @@ button:hover {
     color: #718096;
     font-weight: 500;
     font-size: 14px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(248,249,250,0.8) 100%);
+    background: var(--section-bg);
     padding: 12px 24px;
     border-radius: 12px;
     border: 1px solid rgba(0,0,0,0.06);

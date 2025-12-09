@@ -360,5 +360,6 @@ if ($pdo) {
             }
         });
     </script>
+    <?php include '../theme_toggle.php'; ?>
 </body>
 </html>

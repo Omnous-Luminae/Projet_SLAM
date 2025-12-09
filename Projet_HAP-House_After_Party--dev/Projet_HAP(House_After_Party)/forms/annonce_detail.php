@@ -113,68 +113,73 @@ try {
             }
 
             if ($date_debut && $date_fin && $id_locataire && $id_tarif) {
-                // Validate dates: cannot reserve before today, and end >= start
-                try {
-                    $dtStart = new DateTime($date_debut);
-                    $dtEnd = new DateTime($date_fin);
-                    $today = new DateTime();
-                    $today->setTime(0,0,0);
+                // Validate date format first
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_debut) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_fin)) {
+                    $message = "Format de date invalide. Utilisez le format YYYY-MM-DD.";
+                } else {
+                    // Validate dates: cannot reserve before today, and end >= start
+                    try {
+                        $dtStart = new DateTime($date_debut);
+                        $dtEnd = new DateTime($date_fin);
+                        $today = new DateTime();
+                        $today->setTime(0,0,0);
 
-                    if ($dtStart < $today) {
-                        $message = "La date de début doit être aujourd'hui ou ultérieure.";
-                    } elseif ($dtEnd < $dtStart) {
-                        $message = "La date de fin doit être postérieure ou égale à la date de début.";
-                    } else {
-                        // Server-side overlap check with existing reservations for this bien
-                        $overlapStmt = $pdo->prepare('SELECT 1 FROM Reservation WHERE id_biens = ? AND NOT (date_fin_reservation < ? OR date_debut_reservation > ?) LIMIT 1');
-                        $overlapStmt->execute([$id_bien, $date_debut, $date_fin]);
-                        $overlap = $overlapStmt->fetchColumn();
-                        if ($overlap) {
-                            $message = 'Les dates choisies se chevauchent avec une réservation existante.';
+                        if ($dtStart < $today) {
+                            $message = "La date de début doit être aujourd'hui ou ultérieure.";
+                        } elseif ($dtEnd < $dtStart) {
+                            $message = "La date de fin doit être postérieure ou égale à la date de début.";
                         } else {
-                            // Check unavailable weeks table if exists
-                            try {
-                                // Build unique year-week pairs between start and end
-                                $pairs = [];
-                                $d = clone $dtStart;
-                                while ($d <= $dtEnd) {
-                                    $w = intval($d->format('W'));
-                                    $y = intval($d->format('Y'));
-                                    $key = $y . '-' . $w;
-                                    if (!isset($pairs[$key])) { $pairs[$key] = ['annee' => $y, 'semaine' => $w]; }
-                                    $d->modify('+1 day');
-                                }
+                            // Server-side overlap check with existing reservations for this bien
+                            $overlapStmt = $pdo->prepare('SELECT 1 FROM Reservation WHERE id_biens = ? AND NOT (date_fin_reservation < ? OR date_debut_reservation > ?) LIMIT 1');
+                            $overlapStmt->execute([$id_bien, $date_debut, $date_fin]);
+                            $overlap = $overlapStmt->fetchColumn();
+                            if ($overlap) {
+                                $message = 'Les dates choisies se chevauchent avec une réservation existante.';
+                            } else {
+                                // Check unavailable weeks table if exists
+                                try {
+                                    // Build unique year-week pairs between start and end
+                                    $pairs = [];
+                                    $d = clone $dtStart;
+                                    while ($d <= $dtEnd) {
+                                        $w = intval($d->format('W'));
+                                        $y = intval($d->format('Y'));
+                                        $key = $y . '-' . $w;
+                                        if (!isset($pairs[$key])) { $pairs[$key] = ['annee' => $y, 'semaine' => $w]; }
+                                        $d->modify('+1 day');
+                                    }
 
-                                if (!empty($pairs)) {
-                                    $conds = [];
-                                    $params = [$id_bien];
-                                    foreach ($pairs as $p) {
-                                        $conds[] = '(annee = ? AND semaine = ?)';
-                                        $params[] = $p['annee'];
-                                        $params[] = $p['semaine'];
+                                    if (!empty($pairs)) {
+                                        $conds = [];
+                                        $params = [$id_bien];
+                                        foreach ($pairs as $p) {
+                                            $conds[] = '(annee = ? AND semaine = ?)';
+                                            $params[] = $p['annee'];
+                                            $params[] = $p['semaine'];
+                                        }
+                                        $sql = 'SELECT 1 FROM semaine_indisponible WHERE id_biens = ? AND (' . implode(' OR ', $conds) . ') LIMIT 1';
+                                        $uStmt = $pdo->prepare($sql);
+                                        $uStmt->execute($params);
+                                        $blocked = $uStmt->fetchColumn();
+                                        if ($blocked) {
+                                            $message = 'Les dates sélectionnées comprennent des semaines marquées comme indisponibles.';
+                                        }
                                     }
-                                    $sql = 'SELECT 1 FROM semaine_indisponible WHERE id_biens = ? AND (' . implode(' OR ', $conds) . ') LIMIT 1';
-                                    $uStmt = $pdo->prepare($sql);
-                                    $uStmt->execute($params);
-                                    $blocked = $uStmt->fetchColumn();
-                                    if ($blocked) {
-                                        $message = 'Les dates sélectionnées comprennent des semaines marquées comme indisponibles.';
-                                    }
+                                } catch (Exception $e) {
+                                    // If table missing or error, continue — previously we used Biens.unavailable_weeks client-side
                                 }
-                            } catch (Exception $e) {
-                                // If table missing or error, continue — previously we used Biens.unavailable_weeks client-side
+                            }
+
+                            if (empty($message)) {
+                                $stmt = $pdo->prepare('INSERT INTO Reservation (date_debut_reservation, date_fin_reservation, id_locataire, id_biens, id_Tarif) VALUES (?, ?, ?, ?, ?)');
+                                $stmt->execute([$date_debut, $date_fin, $id_locataire, $id_bien, $id_tarif]);
+                                header('Location: annonce_detail.php?id=' . $id_bien . '&reservation=success');
+                                exit;
                             }
                         }
-
-                        if (empty($message)) {
-                            $stmt = $pdo->prepare('INSERT INTO Reservation (date_debut_reservation, date_fin_reservation, id_locataire, id_biens, id_Tarif) VALUES (?, ?, ?, ?, ?)');
-                            $stmt->execute([$date_debut, $date_fin, $id_locataire, $id_bien, $id_tarif]);
-                            header('Location: annonce_detail.php?id=' . $id_bien . '&reservation=success');
-                            exit;
-                        }
+                    } catch (Exception $e) {
+                        $message = "Format de date invalide.";
                     }
-                } catch (Exception $e) {
-                    $message = "Format de date invalide.";
                 }
             } else {
                 $message = "Tous les champs sont requis.";
@@ -675,7 +680,7 @@ if (isset($_SESSION['user_id'])) {
         <!-- Calendrier FullCalendar -->
         <div class="calendar-section" style="margin-top: 40px;">
             <h3>Calendrier des disponibilités</h3>
-            <div id="calendar" style="max-width: 900px; margin: 0 auto;"></div>
+            <div id="calendar-disponible" style="max-width: 900px; margin: 0 auto;"></div>
         </div>
 
         <!-- AVIS (Reviews) à la toute fin -->
@@ -991,7 +996,7 @@ if (isset($_SESSION['user_id'])) {
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var calendarEl = document.getElementById('calendar');
+            var calendarEl = document.getElementById('calendar-disponible');
             var today = new Date();
             var todayStr = today.toISOString().split('T')[0];
             var reservedDates = new Set();
@@ -1008,6 +1013,7 @@ if (isset($_SESSION['user_id'])) {
                 initialView: 'dayGridMonth',
                 locale: 'fr',
                 selectable: true,
+                editable: true,
                 validRange: { start: todayStr },
                 selectMinDistance: 0,
                 events: function(fetchInfo, successCallback, failureCallback) {
@@ -1015,13 +1021,15 @@ if (isset($_SESSION['user_id'])) {
                         .then(response => response.json())
                         .then(data => {
                             var events = data.map(reservation => ({
+                                id: reservation.id,
                                 title: reservation.title,
                                 start: reservation.start,
                                 end: reservation.end,
                                 backgroundColor: reservation.backgroundColor,
                                 borderColor: reservation.borderColor,
                                 display: reservation.display,
-                                className: reservation.className
+                                className: reservation.className,
+                                editable: reservation.editable
                             }));
                             // Collect reserved dates for strikethrough
                             data.forEach(reservation => {
@@ -1089,12 +1097,51 @@ if (isset($_SESSION['user_id'])) {
                         }
                     }
                 },
+                eventDrop: function(info) {
+                    var event = info.event;
+                    var newStart = event.startStr;
+                    var newEnd = new Date(event.end);
+                    newEnd.setDate(newEnd.getDate() - 1); // FullCalendar end is exclusive
+                    var newEndStr = newEnd.toISOString().split('T')[0];
+
+                    if (confirm('Voulez-vous modifier cette réservation ?')) {
+                        fetch('../api/update_reservation.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: new URLSearchParams({
+                                id_reservation: event.id,
+                                date_debut: newStart,
+                                date_fin: newEndStr,
+                                id_bien: <?= $id_bien ?>
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Réservation mise à jour avec succès.');
+                                calendar.refetchEvents();
+                            } else {
+                                alert('Erreur: ' + data.message);
+                                info.revert();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erreur lors de la mise à jour:', error);
+                            alert('Erreur lors de la mise à jour de la réservation.');
+                            info.revert();
+                        });
+                    } else {
+                        info.revert();
+                    }
+                },
                 select: function(info) {
                     // Check if selection includes unavailable dates
                     var start = new Date(info.startStr);
                     var end = new Date(info.endStr);
                     var hasUnavailable = false;
-                    
+
                     for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
                         let dateStr = d.toISOString().split('T')[0];
                         if (reservedDates.has(dateStr)) {
@@ -1102,19 +1149,19 @@ if (isset($_SESSION['user_id'])) {
                             break;
                         }
                     }
-                    
+
                     if (hasUnavailable) {
                         alert('Ces dates contiennent des semaines réservées ou indisponibles.');
                         calendar.unselect();
                         return;
                     }
-                    
+
                     // Date range selected by user (drag & drop on calendar)
                     var startDate = info.startStr.split('T')[0]; // YYYY-MM-DD format
                     var endDate = new Date(info.end);
                     endDate.setDate(endDate.getDate() - 1); // FullCalendar end is exclusive
                     var endDateStr = endDate.toISOString().split('T')[0];
-                    
+
                     // Fill the reservation form with selected dates
                     if (document.getElementById('date_debut')) {
                         document.getElementById('date_debut').value = startDate;
@@ -1122,7 +1169,7 @@ if (isset($_SESSION['user_id'])) {
                     if (document.getElementById('date_fin')) {
                         document.getElementById('date_fin').value = endDateStr;
                     }
-                    
+
                     // Show the reservation form if it exists
                     var formEl = document.getElementById('reservation-form');
                     if (formEl) {
@@ -1134,7 +1181,7 @@ if (isset($_SESSION['user_id'])) {
                             formEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }, 100);
                     }
-                    
+
                     // Clear selection after processing
                     setTimeout(function() {
                         calendar.unselect();
@@ -1144,5 +1191,6 @@ if (isset($_SESSION['user_id'])) {
             calendar.render();
         });
     </script>
+    <?php include '../../theme_toggle.php'; ?>
 </body>
 </html>

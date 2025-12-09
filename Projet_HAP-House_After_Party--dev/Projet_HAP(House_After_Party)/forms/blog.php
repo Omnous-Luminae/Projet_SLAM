@@ -198,5 +198,6 @@ try {
             initBiensAutocomplete('#bien_input', '#bien_id');
         });
     </script>
+    <?php include '../../theme_toggle.php'; ?>
 </body>
 </html>

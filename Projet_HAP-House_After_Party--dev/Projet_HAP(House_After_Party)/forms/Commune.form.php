@@ -66,117 +66,177 @@ try {
     $message = "Erreur : " . $e->getMessage();
 }
 ?>
-<a href="apropos.php" class="back-to-dashboard">Retour au Dashboard</a>
-<style>
-    .form-section { max-width: 800px; margin: 40px auto; background: #fff; border-radius: 18px; box-shadow: 0 2px 16px rgba(80,0,80,0.06); padding: 40px 30px; }
-    .form-section h3 { text-align: center; margin-bottom: 28px; }
-    .form-section .commune-list { margin-bottom: 20px; }
-    .form-section .commune-list table { border-collapse: collapse; width: 100%; }
-    .form-section .commune-list th, .form-section .commune-list td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
-    .form-section .commune-list th { background: #f3e6fa; }
-    .form-section .pagination { text-align: center; margin: 20px 0; }
-    .form-section .pagination-link { display: inline-block; padding: 8px 12px; margin: 0 4px; background: #a100b8; color: #fff; text-decoration: none; border-radius: 6px; }
-    .form-section .pagination-link:hover, .form-section .pagination-link.active { background: #4b006e; }
-    .form-section form { margin-top: 30px; }
-    .form-section label { display: block; margin-bottom: 5px; font-weight: 600; }
-    .form-section input[type="text"] { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 15px; }
-    .form-section button { background: #a100b8; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-weight: 600; cursor: pointer; }
-    .form-section button:hover { background: #4b006e; }
-    .form-section .success { color: green; text-align: center; margin-bottom: 18px; }
-    .back-to-dashboard { display: inline-block; margin: 20px; padding: 10px 20px; background: #a100b8; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; }
-    .back-to-dashboard:hover { background: #4b006e; }
-</style>
-<div class="form-section">
-    <h3>Liste des Communes (Page <?= $page ?> sur <?= $totalPages ?>)</h3>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Communes - House After Party</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- CSS personnalisé -->
+    <link rel="stylesheet" href="../Css/forms.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>🏛️ Gestion des Communes</h2>
+            <p>Gérez les communes disponibles dans le système</p>
+        </div>
+
+        <a href="../../index.php" class="back-link">&larr; Retour à l'accueil</a>
+
         <?php if ($message): ?>
-            <div class="success"><?= htmlspecialchars($message) ?></div>
+            <div class="message success"><?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
-        <div class="commune-list">
-            <table>
-                <tr>
-                    <th>ID</th>
-                    <th>Code INSEE</th>
-                    <th>Nom</th>
-                    <th>Code Postal</th>
-                </tr>
-                <?php foreach ($communes as $c): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($c['id_commune']) ?></td>
-                        <td><?= htmlspecialchars($c['code_insee']) ?></td>
-                        <td><?= htmlspecialchars($c['nom_commune']) ?></td>
-                        <td><?= htmlspecialchars($c['cp_commune']) ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
-        </div>
-        <div class="pagination">
-            <?php if ($page > 1): ?>
-                <a href="?page=<?= $page - 1 ?>" class="pagination-link">Précédent</a>
-            <?php endif; ?>
-            <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
-                <a href="?page=<?= $i ?>" class="pagination-link <?= $i == $page ? 'active' : '' ?>"><?= $i ?></a>
-            <?php endfor; ?>
-            <?php if ($page < $totalPages): ?>
-                <a href="?page=<?= $page + 1 ?>" class="pagination-link">Suivant</a>
-            <?php endif; ?>
-        </div>
 
-        <h2>Ajouter / Modifier une Commune</h2>
-        <form method="post" action="">
-            <input type="hidden" name="id_commune" value="<?= htmlspecialchars($editCommune['id_commune'] ?? '') ?>">
+        <section class="data-section">
+            <h3>Liste des Communes (Page <?= $page ?> sur <?= $totalPages ?>)</h3>
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Code INSEE</th>
+                            <th>Nom</th>
+                            <th>Code Postal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($communes as $c): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($c['id_commune']) ?></td>
+                                <td><?= htmlspecialchars($c['code_insee']) ?></td>
+                                <td><?= htmlspecialchars($c['nom_commune']) ?></td>
+                                <td><?= htmlspecialchars($c['cp_commune']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
 
-            <label>Code INSEE:</label><br>
-            <input type="text" name="code_insee" value="<?= htmlspecialchars($editCommune['code_insee'] ?? '') ?>" required><br><br>
+            <div class="pagination">
+                <?php if ($page > 1): ?>
+                    <a href="?page=<?= $page - 1 ?>" class="btn btn-secondary">Précédent</a>
+                <?php endif; ?>
+                <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
+                    <a href="?page=<?= $i ?>" class="btn btn-secondary <?= $i == $page ? 'active' : '' ?>"><?= $i ?></a>
+                <?php endfor; ?>
+                <?php if ($page < $totalPages): ?>
+                    <a href="?page=<?= $page + 1 ?>" class="btn btn-secondary">Suivant</a>
+                <?php endif; ?>
+            </div>
+        </section>
 
-            <label>Nom Commune:</label><br>
-            <input type="text" name="nom_commune" value="<?= htmlspecialchars($editCommune['nom_commune'] ?? '') ?>" required><br><br>
+        <section class="form-section">
+            <h3><?= $editCommune ? 'Modifier' : 'Ajouter' ?> une Commune</h3>
+            <form method="post" action="" class="form-grid">
+                <input type="hidden" name="id_commune" value="<?= htmlspecialchars($editCommune['id_commune'] ?? '') ?>">
 
-            <label>Code Postal:</label><br>
-            <input type="text" name="cp_commune" value="<?= htmlspecialchars($editCommune['cp_commune'] ?? '') ?>" required><br><br>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="code_insee">Code INSEE</label>
+                        <input type="text" id="code_insee" name="code_insee" value="<?= htmlspecialchars($editCommune['code_insee'] ?? '') ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nom_commune">Nom Commune</label>
+                        <input type="text" id="nom_commune" name="nom_commune" value="<?= htmlspecialchars($editCommune['nom_commune'] ?? '') ?>" required>
+                    </div>
+                </div>
 
-            <label>Latitude:</label><br>
-            <input type="text" name="lat_commune" value="<?= htmlspecialchars($editCommune['latitude_commune'] ?? '') ?>"><br><br>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cp_commune">Code Postal</label>
+                        <input type="text" id="cp_commune" name="cp_commune" value="<?= htmlspecialchars($editCommune['cp_commune'] ?? '') ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lat_commune">Latitude</label>
+                        <input type="text" id="lat_commune" name="lat_commune" value="<?= htmlspecialchars($editCommune['latitude_commune'] ?? '') ?>">
+                    </div>
+                </div>
 
-            <label>Longitude:</label><br>
-            <input type="text" name="long_commune" value="<?= htmlspecialchars($editCommune['longitude_commune'] ?? '') ?>"><br><br>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="long_commune">Longitude</label>
+                        <input type="text" id="long_commune" name="long_commune" value="<?= htmlspecialchars($editCommune['longitude_commune'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="ville_slug">Ville Slug</label>
+                        <input type="text" id="ville_slug" name="ville_slug" value="<?= htmlspecialchars($editCommune['ville_slug'] ?? '') ?>">
+                    </div>
+                </div>
 
-            <label>Ville Slug:</label><br>
-            <input type="text" name="ville_slug" value="<?= htmlspecialchars($editCommune['ville_slug'] ?? '') ?>"><br><br>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ville_nom_reel">Ville Nom Réel</label>
+                        <input type="text" id="ville_nom_reel" name="ville_nom_reel" value="<?= htmlspecialchars($editCommune['ville_nom_reel'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="ville_nom_soundex">Ville Nom Soundex</label>
+                        <input type="text" id="ville_nom_soundex" name="ville_nom_soundex" value="<?= htmlspecialchars($editCommune['ville_nom_soundex'] ?? '') ?>">
+                    </div>
+                </div>
 
-            <label>Ville Nom Reel:</label><br>
-            <input type="text" name="ville_nom_reel" value="<?= htmlspecialchars($editCommune['ville_nom_reel'] ?? '') ?>"><br><br>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ville_nom_metaphone">Ville Nom Metaphone</label>
+                        <input type="text" id="ville_nom_metaphone" name="ville_nom_metaphone" value="<?= htmlspecialchars($editCommune['ville_nom_metaphone'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="ville_departement">Ville Département</label>
+                        <input type="text" id="ville_departement" name="ville_departement" value="<?= htmlspecialchars($editCommune['ville_departement'] ?? '') ?>">
+                    </div>
+                </div>
 
-            <label>Ville Nom Soundex:</label><br>
-            <input type="text" name="ville_nom_soundex" value="<?= htmlspecialchars($editCommune['ville_nom_soundex'] ?? '') ?>"><br><br>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ville_arrondissement">Ville Arrondissement</label>
+                        <input type="text" id="ville_arrondissement" name="ville_arrondissement" value="<?= htmlspecialchars($editCommune['ville_arrondissement'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="ville_canton">Ville Canton</label>
+                        <input type="text" id="ville_canton" name="ville_canton" value="<?= htmlspecialchars($editCommune['ville_canton'] ?? '') ?>">
+                    </div>
+                </div>
 
-            <label>Ville Nom Metaphone:</label><br>
-            <input type="text" name="ville_nom_metaphone" value="<?= htmlspecialchars($editCommune['ville_nom_metaphone'] ?? '') ?>"><br><br>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ville_code_commune">Ville Code Commune</label>
+                        <input type="text" id="ville_code_commune" name="ville_code_commune" value="<?= htmlspecialchars($editCommune['ville_code_commune'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="ville_commune">Ville Commune</label>
+                        <input type="text" id="ville_commune" name="ville_commune" value="<?= htmlspecialchars($editCommune['ville_commune'] ?? '') ?>">
+                    </div>
+                </div>
 
-            <label>Ville Departement:</label><br>
-            <input type="text" name="ville_departement" value="<?= htmlspecialchars($editCommune['ville_departement'] ?? '') ?>"><br><br>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ville_surface">Ville Surface</label>
+                        <input type="text" id="ville_surface" name="ville_surface" value="<?= htmlspecialchars($editCommune['ville_surface'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="ville_zmin">Ville Zmin</label>
+                        <input type="text" id="ville_zmin" name="ville_zmin" value="<?= htmlspecialchars($editCommune['ville_zmin'] ?? '') ?>">
+                    </div>
+                </div>
 
-            <label>Ville Arrondissement:</label><br>
-            <input type="text" name="ville_arrondissement" value="<?= htmlspecialchars($editCommune['ville_arrondissement'] ?? '') ?>"><br><br>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ville_zmax">Ville Zmax</label>
+                        <input type="text" id="ville_zmax" name="ville_zmax" value="<?= htmlspecialchars($editCommune['ville_zmax'] ?? '') ?>">
+                    </div>
+                </div>
 
-            <label>Ville Canton:</label><br>
-            <input type="text" name="ville_canton" value="<?= htmlspecialchars($editCommune['ville_canton'] ?? '') ?>"><br><br>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary"><?= $editCommune ? 'Modifier' : 'Ajouter' ?> la Commune</button>
+                </div>
+            </form>
+        </section>
+    </div>
 
-            <label>Ville Code Commune:</label><br>
-            <input type="text" name="ville_code_commune" value="<?= htmlspecialchars($editCommune['ville_code_commune'] ?? '') ?>"><br><br>
-
-            <label>Ville Commune:</label><br>
-            <input type="text" name="ville_commune" value="<?= htmlspecialchars($editCommune['ville_commune'] ?? '') ?>"><br><br>
-
-            <label>Ville Surface:</label><br>
-            <input type="text" name="ville_surface" value="<?= htmlspecialchars($editCommune['ville_surface'] ?? '') ?>"><br><br>
-
-            <label>Ville Zmin:</label><br>
-            <input type="text" name="ville_zmin" value="<?= htmlspecialchars($editCommune['ville_zmin'] ?? '') ?>"><br><br>
-
-            <label>Ville Zmax:</label><br>
-            <input type="text" name="ville_zmax" value="<?= htmlspecialchars($editCommune['ville_zmax'] ?? '') ?>"><br><br>
-
-            <button type="submit"><?= $editCommune ? 'Modifier' : 'Ajouter' ?> Commune</button>
-        </form>
-</div>
-<script src="../js/confirm_delete.js"></script>
+    <script src="../js/confirm_delete.js"></script>
+</body>
+</html>

@@ -85,5 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
             <p>Le lien de réinitialisation n'est pas valide. Demandez un nouveau lien si nécessaire.</p>
         <?php endif; ?>
     </div>
+    <?php include '../theme_toggle.php'; ?>
 </body>
 </html>

@@ -4,6 +4,13 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../classes/Locataire/Locataire.php';
 
 $message = '';
+if (isset($_GET['redirect_from']) && $_GET['redirect_from'] === 'reservation') {
+    $message = "Vous devez être connecté pour effectuer une réservation.";
+}
+if (isset($_SESSION['redirect_message'])) {
+    $message = $_SESSION['redirect_message'];
+    unset($_SESSION['redirect_message']);
+}
 // Vérifier le captcha côté serveur
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     if (!isset($_POST['captcha']) || !isset($_SESSION['captcha_answer']) || trim($_POST['captcha']) === '' || intval($_POST['captcha']) !== intval($_SESSION['captcha_answer'])) {
@@ -420,5 +427,6 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
             <p>Déjà un compte ? <a href="connexion.php">Connectez-vous ici</a>.</p>
         </div>
     </div>
+    <?php include '../../theme_toggle.php'; ?>
 </body>
 </html>

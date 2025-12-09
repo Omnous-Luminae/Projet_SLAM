@@ -42,66 +42,93 @@ try {
     $message = "Erreur : " . $e->getMessage();
 }
 ?>
-<style>
-    .form-section { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 18px; box-shadow: 0 2px 16px rgba(80,0,80,0.06); padding: 40px 30px; }
-    .form-section h3 { text-align: center; margin-bottom: 28px; }
-    .form-section form { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
-    .form-section input[type="text"] { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
-    .form-section input[type="submit"], .form-section button { background: #a100b8; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-weight: 600; cursor: pointer; }
-    .form-section input[type="submit"]:hover, .form-section button:hover { background: #4b006e; }
-    .form-section .type-list { margin-top: 20px; }
-    .form-section .type-list table { border-collapse: collapse; width: 100%; }
-    .form-section .type-list th, .form-section .type-list td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
-    .form-section .type-list th { background: #f3e6fa; }
-    .form-section .success { color: green; text-align: center; margin-bottom: 18px; }
-</style>
-<div class="form-section">
-    <h3>Gestion des Types d'Événements</h3>
-        <?php if ($message): ?>
-            <div class="success"><?= htmlspecialchars($message) ?></div>
-        <?php endif; ?>
-        <form method="post">
-            <input type="text" id="lib_type_evenement" name="lib_type_evenement" placeholder="Nom du type d'événement" required>
-            <input type="submit" name="add_type_evenement" value="Ajouter">
-        </form>
-        <div class="type-list">
-            <table>
-                <tr>
-                    <th>ID</th>
-                    <th>Nom</th>
-                    <th>Actions</th>
-                </tr>
-                <?php foreach ($types as $t): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($t['id_type_evenement']) ?></td>
-                        <td>
-                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $t['id_type_evenement']): ?>
-                                <form method="post" style="display:inline;">
-                                    <input type="hidden" name="id_type_evenement" value="<?= htmlspecialchars($t['id_type_evenement']) ?>">
-                                    <input type="text" name="lib_type_evenement_edit" value="<?= htmlspecialchars($t['lib_type_evenement']) ?>" required>
-                                    <button type="submit" name="edit_type_evenement">Enregistrer</button>
-                                </form>
-                            <?php else: ?>
-                                <?= htmlspecialchars($t['lib_type_evenement']) ?>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $t['id_type_evenement']): ?>
-                            <?php else: ?>
-                                <form method="post" style="display:inline;">
-                                    <input type="hidden" name="edit_mode" value="<?= htmlspecialchars($t['id_type_evenement']) ?>">
-                                    <button type="submit">Modifier</button>
-                                </form>
-                                <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce type ?');">
-                                    <input type="hidden" name="id_type_evenement" value="<?= htmlspecialchars($t['id_type_evenement']) ?>">
-                                    <button type="submit" name="delete_type_evenement">Supprimer</button>
-                                </form>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Types d'Événements - House After Party</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- CSS personnalisé -->
+    <link rel="stylesheet" href="../Css/forms.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>🎪 Gestion des Types d'Événements</h2>
+            <p>Gérez les différents types d'événements disponibles</p>
         </div>
-</div>
 
-<script src="../js/confirm_delete.js"></script>
+        <a href="../../index.php" class="back-link">&larr; Retour à l'accueil</a>
+
+        <?php if ($message): ?>
+            <div class="message success"><?= htmlspecialchars($message) ?></div>
+        <?php endif; ?>
+
+        <section class="form-section">
+            <h3>Ajouter un nouveau type d'événement</h3>
+            <form method="post" class="form-grid">
+                <div class="form-group">
+                    <label for="lib_type_evenement">Nom du type d'événement</label>
+                    <input type="text" id="lib_type_evenement" name="lib_type_evenement" placeholder="Ex: Mariage, Anniversaire..." required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" name="add_type_evenement" class="btn btn-primary">Ajouter le type</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="data-section">
+            <h3>Types d'événements existants</h3>
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($types as $t): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($t['id_type_evenement']) ?></td>
+                                <td>
+                                    <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $t['id_type_evenement']): ?>
+                                        <form method="post" style="display:inline;">
+                                            <input type="hidden" name="id_type_evenement" value="<?= htmlspecialchars($t['id_type_evenement']) ?>">
+                                            <input type="text" name="lib_type_evenement_edit" value="<?= htmlspecialchars($t['lib_type_evenement']) ?>" required>
+                                            <button type="submit" name="edit_type_evenement" class="btn btn-primary">Enregistrer</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <?= htmlspecialchars($t['lib_type_evenement']) ?>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="actions">
+                                    <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $t['id_type_evenement']): ?>
+                                        <!-- Rien, on est en mode édition -->
+                                    <?php else: ?>
+                                        <form method="post" style="display:inline;">
+                                            <input type="hidden" name="edit_mode" value="<?= htmlspecialchars($t['id_type_evenement']) ?>">
+                                            <button type="submit" class="btn btn-secondary">Modifier</button>
+                                        </form>
+                                        <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce type ?');">
+                                            <input type="hidden" name="id_type_evenement" value="<?= htmlspecialchars($t['id_type_evenement']) ?>">
+                                            <button type="submit" name="delete_type_evenement" class="btn btn-danger">Supprimer</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="../js/confirm_delete.js"></script>
+</body>
+</html>

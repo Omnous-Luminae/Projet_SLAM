@@ -313,5 +313,6 @@ try {
             </form>
         </section>
     </div>
+    <?php include '../../theme_toggle.php'; ?>
 </body>
 </html>

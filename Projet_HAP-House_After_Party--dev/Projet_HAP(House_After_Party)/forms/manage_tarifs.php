@@ -192,5 +192,6 @@ try {
             </form>
         </div>
     </div>
+    <?php include '../../theme_toggle.php'; ?>
 </body>
 </html>
