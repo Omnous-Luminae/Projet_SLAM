@@ -22,10 +22,34 @@ require_once 'Projet_HAP(House_After_Party)/config/db.php';
             <a href="Projet_HAP(House_After_Party)/auth/logout.php">🚪 Déconnexion</a>
         </nav>
     </header>
+
+    <?php include 'theme_toggle.php'; ?>
     <main>
         <section class="welcome-section">
             <h2>Bienvenue, <?php echo htmlspecialchars($_SESSION['user_name']); ?> !</h2>
             <p>Gérez efficacement votre plateforme House After Party depuis ce tableau de bord.</p>
+            <!-- Quick Form Selector -->
+            <div style="margin-top: 20px;">
+                <label for="form_selector" style="font-weight: bold; margin-right: 10px;">Aller directement à un formulaire :</label>
+                <select id="form_selector" onchange="if(this.value) window.location.href=this.value;" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                    <option value="">-- Choisir un formulaire --</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Bien.form.php">Gestion des Biens</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Locataires.form.php">Gestion des Locataires</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Reservation.form.php">Gestion des Réservations</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Evenement.form.php">Gestion des Événements</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/PtsInteret.form.php">Points d'Intérêt</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Tarif.form.php">Gestion des Tarifs</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Annonce.form.php">Gestion des Annonces</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Saison.form.php">Gestion des Saisons</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/TypeBien.form.php">Types de Biens</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/TypeEvenement.form.php">Types d'Événements</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/TypePtsInteret.form.php">Types de Points d'Intérêt</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Commune.form.php">Communes</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Compose.form.php">Compositions</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Dispose.form.php">Dispositions</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/Prestation.form.php">Prestations</option>
+                </select>
+            </div>
         </section>
 
         <section class="stats-section">

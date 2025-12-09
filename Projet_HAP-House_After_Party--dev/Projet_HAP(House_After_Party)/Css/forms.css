@@ -1,8 +1,38 @@
 /* Modern Form Styles for HAP - Matching Site Theme */
 
+:root {
+    --form-page-bg: linear-gradient(135deg, #f7f7f9 0%, #e8e8f0 100%);
+    --form-bg: #fff;
+    --form-text: #333;
+    --form-text-secondary: #666;
+    --form-border: #e1e1e1;
+    --form-input-bg: #fff;
+    --form-btn-primary-bg: linear-gradient(135deg, #a100b8, #d100e8);
+    --form-table-header-bg: linear-gradient(135deg, #a100b8, #d100e8);
+    --form-table-row-even-bg: #f8f9fa;
+    --form-table-hover-bg: rgba(161, 0, 184, 0.05);
+    --form-message-success-bg: linear-gradient(135deg, #4CAF50, #45a049);
+    --form-message-error-bg: linear-gradient(135deg, #f44336, #d32f2f);
+}
+
+[data-theme="dark"] {
+    --form-page-bg: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+    --form-bg: #2a2a2a;
+    --form-text: #eee;
+    --form-text-secondary: #ccc;
+    --form-border: #555;
+    --form-input-bg: #333;
+    --form-btn-primary-bg: linear-gradient(135deg, #bb86fc, #9c27b0);
+    --form-table-header-bg: linear-gradient(135deg, #bb86fc, #9c27b0);
+    --form-table-row-even-bg: #333;
+    --form-table-hover-bg: rgba(187, 134, 252, 0.1);
+    --form-message-success-bg: linear-gradient(135deg, #4caf50, #81c784);
+    --form-message-error-bg: linear-gradient(135deg, #f44336, #ef5350);
+}
+
 body {
     font-family: 'Montserrat', Arial, sans-serif;
-    background: linear-gradient(135deg, #f7f7f9 0%, #e8e8f0 100%);
+    background: var(--form-page-bg);
     margin: 0;
     min-height: 100vh;
 }
@@ -10,7 +40,7 @@ body {
 .form-container {
     max-width: 1200px;
     margin: 40px auto;
-    background: #fff;
+    background: var(--form-bg);
     border-radius: 24px;
     box-shadow: 0 8px 32px rgba(161, 0, 184, 0.1);
     padding: 50px 40px;

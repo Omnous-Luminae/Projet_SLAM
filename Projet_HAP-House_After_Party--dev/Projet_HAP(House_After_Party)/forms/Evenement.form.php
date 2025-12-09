@@ -283,6 +283,7 @@ try {
             </table>
         </section>
     </div>
+    <?php include '../../theme_toggle.php'; ?>
 </body>
 </html>
 <script src="../js/confirm_delete.js"></script>

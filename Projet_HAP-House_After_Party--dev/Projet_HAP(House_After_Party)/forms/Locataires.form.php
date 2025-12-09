@@ -129,8 +129,19 @@ try {
             }
         }
 
+        // Search parameter
+        $search = trim($_GET['search_locataire'] ?? '');
+
         // Récupération des locataires avec nom de commune
-    $stmt = $pdo->query("SELECT l.*, l.date_naissance AS date_naissance_locataire, c.nom_commune FROM Locataire l JOIN Commune c ON l.id_commune = c.id_commune");
+        $where = '';
+        $params = [];
+        if ($search) {
+            $where = 'WHERE (l.nom_locataire LIKE ? OR l.prenom_locataire LIKE ? OR l.email_locataire LIKE ?)';
+            $params = ['%' . $search . '%', '%' . $search . '%', '%' . $search . '%'];
+        }
+        $query = "SELECT l.*, l.date_naissance AS date_naissance_locataire, c.nom_commune FROM Locataire l JOIN Commune c ON l.id_commune = c.id_commune $where";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
         $locataires = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (Exception $e) {
@@ -150,7 +161,7 @@ try {
     <!-- jQuery UI CSS -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <!-- CSS personnalisé -->
-    <link rel="stylesheet" href="../Css/locataires.css">
+    <link rel="stylesheet" href="../Css/forms.css">
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
@@ -303,6 +314,14 @@ try {
         </div>
         <div class="table-section">
             <h3>📋 Liste des locataires</h3>
+            <!-- Search Form -->
+            <form method="get" style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+                <input type="text" name="search_locataire" placeholder="Rechercher par nom, prénom ou email..." value="<?= htmlspecialchars($search) ?>" style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; flex: 1;">
+                <button type="submit" style="padding: 8px 16px; background: #a100b8; color: #fff; border: none; border-radius: 6px; cursor: pointer;">Filtrer</button>
+                <?php if ($search): ?>
+                    <a href="Locataires.form.php" style="padding: 8px 16px; background: #ccc; color: #000; text-decoration: none; border-radius: 6px;">Effacer</a>
+                <?php endif; ?>
+            </form>
             <div class="locataire-list">
                 <table id="locataires_table">
                     <thead>

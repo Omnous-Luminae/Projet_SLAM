@@ -45,7 +45,7 @@ try {
     }
 
     // Get all reservations
-    $stmt = $pdo->prepare('SELECT r.date_debut_reservation, r.date_fin_reservation, l.nom_locataire, l.prenom_locataire, s.lib_saison FROM Reservation r LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire LEFT JOIN Tarif t ON r.id_Tarif = t.id_Tarif LEFT JOIN Saison s ON t.id_saison = s.id_saison WHERE r.id_biens = ?');
+    $stmt = $pdo->prepare('SELECT r.id_reservation, r.date_debut_reservation, r.date_fin_reservation, r.id_locataire, l.nom_locataire, l.prenom_locataire, s.lib_saison FROM Reservation r LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire LEFT JOIN Tarif t ON r.id_Tarif = t.id_Tarif LEFT JOIN Saison s ON t.id_saison = s.id_saison WHERE r.id_biens = ?');
     $stmt->execute([$id_bien]);
 
     $seasonColors = [
@@ -53,8 +53,8 @@ try {
         'Hiver' => '#87CEEB',
         'Printemps' => '#98FB98',
         'Automne' => '#FFA500',
-        'Basse' => '#D3D3D3',
-        'Haute' => '#FF6347',
+        'Saison basse' => '#D3D3D3',
+        'Saison haute' => '#FF6347',
         'default' => '#add8e6'
     ];
 
@@ -65,7 +65,20 @@ try {
         $endDate->modify('+1 day');
         $end = $endDate->format('Y-m-d');
         $title = 'Réservé par ' . htmlspecialchars($row['nom_locataire'] . ' ' . $row['prenom_locataire']);
-        $saison = $row['lib_saison'] ?? 'default';
+
+        // Determine saison based on the month of the start date
+        $dt = new DateTime($start);
+        $month = intval($dt->format('m'));
+        if ($month >= 3 && $month <= 5) {
+            $saison = 'Printemps';
+        } elseif ($month >= 6 && $month <= 8) {
+            $saison = 'Été';
+        } elseif ($month >= 9 && $month <= 11) {
+            $saison = 'Automne';
+        } else {
+            $saison = 'Hiver';
+        }
+
         if (array_key_exists($saison, $seasonColors)) {
             $color = $seasonColors[$saison];
         } else {

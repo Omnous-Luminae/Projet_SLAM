@@ -177,5 +177,7 @@ require_once __DIR__ . '/Projet_HAP(House_After_Party)/config/db.php';
         &copy; <?= date('Y') ?> House After Party &mdash; Tous droits réservés.<br>
         <small style="color: #999;">Fait avec ❤️ pour les amoureux des nuits blanches</small>
     </footer>
+
+    <?php include 'theme_toggle.php'; ?>
 </body>
 </html>

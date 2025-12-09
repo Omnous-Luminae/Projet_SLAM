@@ -48,58 +48,105 @@ try {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Gestion des Tarifs</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Montserrat', Arial, sans-serif; background: #f7f7f9; margin: 0; }
-        .container { max-width: 1200px; margin: 40px auto; background: #fff; border-radius: 18px; box-shadow: 0 2px 16px rgba(80,0,80,0.06); padding: 40px 30px; }
-        h2 { text-align: center; margin-bottom: 28px; }
-        form { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; justify-content: center; }
-        input, select { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
-        input[type="submit"], button { background: #a100b8; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-weight: 600; cursor: pointer; }
-        input[type="submit"]:hover, button:hover { background: #4b006e; }
-        .tarif-list { margin-top: 20px; }
-        .tarif-list table { border-collapse: collapse; width: 100%; }
-        .tarif-list th, .tarif-list td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
-        .tarif-list th { background: #f3e6fa; }
-        .success { color: green; text-align: center; margin-bottom: 18px; }
-        .back-link { display: block; margin-bottom: 18px; color: #a100b8; text-decoration: none; font-weight: 600; }
-        .back-link:hover { text-decoration: underline; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Tarifs - House After Party</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- CSS personnalisé -->
+    <link rel="stylesheet" href="../Css/forms.css">
 </head>
 <body>
     <div class="container">
-        <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
-        <h2>Gestion des Tarifs</h2>
-        <?php if ($message): ?>
-            <div class="success"><?= htmlspecialchars($message) ?></div>
-        <?php endif; ?>
-        <form method="post">
-            <input type="number" name="semaine_tarif" placeholder="Semaine" min="1" max="52" required>
-            <input type="number" name="annee_tarif" placeholder="Année" min="2020" required>
-            <input type="number" step="0.01" name="tarif" placeholder="Tarif (€)" min="0" required>
-            <select name="id_saison" required>
+        <div class="header">
+            <h2>💰 Gestion des Tarifs</h2>
+            <p>Gérez les tarifs des biens par saison et semaine</p>
+        </div>
 
-                <!DOCTYPE html>
-                <html lang="fr">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>Gestion des Tarifs</title>
-                    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-                    <style>
-                        body { font-family: 'Montserrat', Arial, sans-serif; background: #f7f7f9; margin: 0; }
-                        .container { max-width: 600px; margin: 80px auto; background: #fff; border-radius: 18px; box-shadow: 0 2px 16px rgba(80,0,80,0.06); padding: 40px 30px; text-align: center; }
-                        h2 { margin-bottom: 28px; }
-                        .back-link { display: block; margin-bottom: 18px; color: #a100b8; text-decoration: none; font-weight: 600; }
-                        .back-link:hover { text-decoration: underline; }
-                        .info { color: #a100b8; font-size: 1.2em; margin-top: 40px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
-                        <h2>Gestion des Tarifs</h2>
-                        <div class="info">Ce formulaire n'est plus disponible pour les utilisateurs.<br>Veuillez contacter l'administrateur si besoin.</div>
-                    </div>
-                </body>
-                </html>
+        <a href="../../index.php" class="back-link">&larr; Retour à l'accueil</a>
+
+        <?php if ($message): ?>
+            <div class="message success"><?= htmlspecialchars($message) ?></div>
+        <?php endif; ?>
+
+        <section class="form-section">
+            <h3>Ajouter un nouveau tarif</h3>
+            <form method="post" class="form-grid">
+                <div class="form-group">
+                    <label for="semaine_tarif">Semaine</label>
+                    <input type="number" id="semaine_tarif" name="semaine_tarif" placeholder="1-52" min="1" max="52" required>
+                </div>
+                <div class="form-group">
+                    <label for="annee_tarif">Année</label>
+                    <input type="number" id="annee_tarif" name="annee_tarif" placeholder="2024" min="2020" required>
+                </div>
+                <div class="form-group">
+                    <label for="tarif">Tarif (€)</label>
+                    <input type="number" id="tarif" name="tarif" step="0.01" placeholder="150.00" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="id_saison">Saison</label>
+                    <select id="id_saison" name="id_saison" required>
+                        <option value="">-- Sélectionner une saison --</option>
+                        <?php foreach ($saisons as $saison): ?>
+                            <option value="<?= $saison['id_saison'] ?>"><?= htmlspecialchars($saison['lib_saison']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="id_biens">Bien</label>
+                    <select id="id_biens" name="id_biens" required>
+                        <option value="">-- Sélectionner un bien --</option>
+                        <?php foreach ($biens as $bien): ?>
+                            <option value="<?= $bien['id_biens'] ?>"><?= htmlspecialchars($bien['nom_biens']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" name="add_tarif" class="btn btn-primary">Ajouter le tarif</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="data-section">
+            <h3>Tarifs existants</h3>
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Semaine</th>
+                            <th>Année</th>
+                            <th>Tarif</th>
+                            <th>Saison</th>
+                            <th>Bien</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($tarifs as $tarif): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($tarif['id_Tarif']) ?></td>
+                                <td><?= htmlspecialchars($tarif['semaine_Tarif']) ?></td>
+                                <td><?= htmlspecialchars($tarif['année_Tarif']) ?></td>
+                                <td><?= htmlspecialchars(number_format($tarif['tarif'], 2, ',', ' ')) ?> €</td>
+                                <td><?= htmlspecialchars($tarif['lib_saison']) ?></td>
+                                <td><?= htmlspecialchars($tarif['nom_biens']) ?></td>
+                                <td class="actions">
+                                    <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce tarif ?');">
+                                        <input type="hidden" name="id_tarif" value="<?= htmlspecialchars($tarif['id_Tarif']) ?>">
+                                        <button type="submit" name="delete_tarif" class="btn btn-danger">Supprimer</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="../js/confirm_delete.js"></script>
+</body>
+</html>
