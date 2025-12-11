@@ -1,9 +1,27 @@
 /* Dashboard Administrateur - Styles spécifiques et uniques */
 
+:root {
+    --dashboard-bg: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+    --dashboard-text: #ffffff;
+    --dashboard-card-bg: rgba(255, 255, 255, 0.1);
+    --dashboard-accent: #ff6b6b;
+    --dashboard-accent-secondary: #4ecdc4;
+    --dashboard-hover-bg: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] {
+    --dashboard-bg: linear-gradient(135deg, #0a0a0f, #0d1117, #0a0e1a);
+    --dashboard-text: #bb86fc;
+    --dashboard-card-bg: rgba(187, 134, 252, 0.1);
+    --dashboard-accent: #bb86fc;
+    --dashboard-accent-secondary: #03dac6;
+    --dashboard-hover-bg: rgba(187, 134, 252, 0.2);
+}
+
 body {
     font-family: 'Montserrat', sans-serif;
-    background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-    color: #ffffff;
+    background: var(--dashboard-bg);
+    color: var(--dashboard-text);
     margin: 0;
     padding: 0;
     min-height: 100vh;
@@ -24,7 +42,7 @@ header {
 
 header h1 {
     margin: 0;
-    color: #ff6b6b;
+    color: var(--dashboard-accent);
     text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
 }
 
@@ -42,7 +60,7 @@ nav a {
 }
 
 nav a:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--dashboard-hover-bg);
     transform: translateY(-2px);
 }
 
@@ -53,7 +71,7 @@ main {
 }
 
 section {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--dashboard-card-bg);
     backdrop-filter: blur(10px);
     border-radius: 15px;
     padding: 2rem;

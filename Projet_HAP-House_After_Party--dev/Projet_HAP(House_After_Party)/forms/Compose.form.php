@@ -76,8 +76,17 @@ try {
             }
         }
 
-        // Récupération des compositions
-        $composes = $pdo->query('SELECT c.*, b.nom_biens, p.lib_prestation FROM Compose c LEFT JOIN Biens b ON c.id_biens = b.id_biens LEFT JOIN Prestation p ON c.id_prestation = p.id_prestation ORDER BY c.id_biens, c.id_prestation')->fetchAll(PDO::FETCH_ASSOC);
+        // Récupération du filtre par bien si spécifié
+        $filter_bien = isset($_GET['id_bien']) ? intval($_GET['id_bien']) : 0;
+        
+        // Récupération des compositions avec filtre optionnel
+        if ($filter_bien > 0) {
+            $stmt = $pdo->prepare('SELECT c.*, b.nom_biens, p.lib_prestation FROM Compose c LEFT JOIN Biens b ON c.id_biens = b.id_biens LEFT JOIN Prestation p ON c.id_prestation = p.id_prestation WHERE c.id_biens = ? ORDER BY c.id_prestation');
+            $stmt->execute([$filter_bien]);
+            $composes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $composes = $pdo->query('SELECT c.*, b.nom_biens, p.lib_prestation FROM Compose c LEFT JOIN Biens b ON c.id_biens = b.id_biens LEFT JOIN Prestation p ON c.id_prestation = p.id_prestation ORDER BY c.id_biens, c.id_prestation')->fetchAll(PDO::FETCH_ASSOC);
+        }
 
     // Biens et prestations
     $biens = $pdo->query('SELECT id_biens, nom_biens FROM Biens')->fetchAll(PDO::FETCH_ASSOC);
@@ -115,6 +124,24 @@ try {
     <div class="container">
         <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
         <h2>Gestion des Compositions (Biens - Prestations)</h2>
+        
+        <!-- Filtre par bien -->
+        <div style="margin-bottom: 20px; text-align: center;">
+            <form method="get" style="display: inline-flex; gap: 10px;">
+                <select name="id_bien" onchange="this.form.submit()" style="padding: 10px;">
+                    <option value="0">-- Tous les biens --</option>
+                    <?php foreach ($biens as $b): ?>
+                        <option value="<?= $b['id_biens'] ?>" <?= $filter_bien == $b['id_biens'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($b['nom_biens']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <?php if ($filter_bien > 0): ?>
+                    <a href="Compose.form.php" style="padding: 10px; background: #f44336; color: white; text-decoration: none; border-radius: 6px;">Réinitialiser le filtre</a>
+                <?php endif; ?>
+            </form>
+        </div>
+        
         <?php if ($message): ?>
             <div class="success"><?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
@@ -122,7 +149,7 @@ try {
             <select name="id_biens" required>
                 <option value="">-- Bien --</option>
                 <?php foreach ($biens as $b): ?>
-                    <option value="<?= $b['id_biens'] ?>" <?= isset($selectedBien) && $selectedBien == $b['id_biens'] ? 'selected' : '' ?>><?= htmlspecialchars($b['nom_biens']) ?></option>
+                    <option value="<?= $b['id_biens'] ?>" <?= $filter_bien == $b['id_biens'] ? 'selected' : '' ?>><?= htmlspecialchars($b['nom_biens']) ?></option>
                 <?php endforeach; ?>
             </select>
 

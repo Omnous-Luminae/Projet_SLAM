@@ -144,7 +144,7 @@ try {
     </script>
 </head>
 <body>
-    <div class="form-container">
+    <div class="form-container admin-form">
         <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
         <div class="form-header">
             <h2>Gestion des Événements</h2>

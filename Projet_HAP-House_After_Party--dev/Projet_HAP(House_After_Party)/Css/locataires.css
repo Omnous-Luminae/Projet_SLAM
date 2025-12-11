@@ -1,18 +1,38 @@
 /* CSS personnalisé pour le formulaire de gestion des locataires */
 
+:root {
+    --loc-bg: #f7f7f9;
+    --loc-container-bg: #fff;
+    --loc-text: #333;
+    --loc-accent: #a100b8;
+    --loc-gradient: linear-gradient(135deg, #a100b8 0%, #4b006e 100%);
+    --loc-form-bg: #f8f9fa;
+    --loc-hover: #f3e6fa;
+}
+
+[data-theme="dark"] {
+    --loc-bg: #0d0d0d;
+    --loc-container-bg: #1e1e1e;
+    --loc-text: #bb86fc;
+    --loc-accent: #bb86fc;
+    --loc-gradient: linear-gradient(135deg, #bb86fc 0%, #7c4dff 100%);
+    --loc-form-bg: #2a2a2a;
+    --loc-hover: #2a2a2a;
+}
+
 body {
     font-family: 'Montserrat', Arial, sans-serif;
-    background: #f7f7f9;
+    background: var(--loc-bg);
     margin: 0;
     padding: 0;
-    color: #333;
+    color: var(--loc-text);
 }
 
 .container {
     max-width: 1200px;
     margin: 20px auto;
     padding: 20px;
-    background: #fff;
+    background: var(--loc-container-bg);
     border-radius: 15px;
     box-shadow: 0 4px 20px rgba(161, 0, 184, 0.1);
 }
@@ -21,7 +41,7 @@ body {
     text-align: center;
     margin-bottom: 30px;
     padding: 20px;
-    background: linear-gradient(135deg, #a100b8 0%, #4b006e 100%);
+    background: var(--loc-gradient);
     color: #fff;
     border-radius: 12px;
     box-shadow: 0 2px 10px rgba(161, 0, 184, 0.3);
@@ -40,7 +60,7 @@ body {
 
 .back-link {
     display: inline-block;
-    color: #a100b8;
+    color: var(--loc-accent);
     text-decoration: none;
     font-weight: 600;
     margin-bottom: 20px;
@@ -50,7 +70,7 @@ body {
 }
 
 .back-link:hover {
-    background: #f3e6fa;
+    background: var(--loc-hover);
     text-decoration: none;
 }
 
@@ -75,7 +95,7 @@ body {
 }
 
 .form-section {
-    background: #f8f9fa;
+    background: var(--loc-form-bg);
     border-radius: 12px;
     padding: 25px;
     margin-bottom: 30px;
@@ -85,7 +105,7 @@ body {
 .form-section h3 {
     margin-top: 0;
     margin-bottom: 20px;
-    color: #a100b8;
+    color: var(--loc-accent);
     font-size: 1.4em;
     font-weight: 600;
 }

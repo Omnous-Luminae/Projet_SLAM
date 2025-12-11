@@ -102,8 +102,8 @@ try {
 <body>
     <div class="container">
         <div class="header">
-            <h2>🎭 Gestion des Prestations</h2>
-            <p>Gérez les prestations disponibles pour les biens</p>
+            <h2>⚽ Gestion des Prestations</h2>
+            <p>Gérez les équipements sportifs et de loisirs disponibles pour les biens</p>
         </div>
         <a href="../../index.php" class="back-link">&larr; Retour à l'accueil</a>
 
@@ -113,20 +113,23 @@ try {
 
         <section class="form-section">
             <h3>Ajouter une nouvelle prestation</h3>
+            <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
+                Exemples : Terrain de football, Piscine privée, Jacuzzi, Salle de sport, Baby-foot, etc.
+            </p>
             <form method="post" class="prestation-form">
-                <input type="text" id="lib_prestation" name="lib_prestation" placeholder="Nom de la prestation" required>
+                <input type="text" id="lib_prestation" name="lib_prestation" placeholder="Ex: Terrain de tennis, Bar privé..." required>
                 <button type="submit" name="add_prestation" class="btn btn-primary">Ajouter</button>
             </form>
         </section>
 
         <section class="data-section">
-            <h3>Prestations existantes</h3>
+            <h3>Équipements et prestations existants</h3>
             <div class="prestation-list">
                 <table class="data-table">
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Nom</th>
+                            <th>Équipement / Prestation</th>
                             <th>Actions</th>
                         </tr>
                     </thead>

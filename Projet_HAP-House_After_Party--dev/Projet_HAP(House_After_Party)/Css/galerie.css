@@ -1,8 +1,25 @@
 /* Galerie CSS personnalisé pour utiliser.php */
 
+:root {
+    --galerie-bg: #f7f7f9;
+    --galerie-card-bg: #fff;
+    --galerie-text: #333;
+    --galerie-accent: #a100b8;
+    --galerie-gradient: linear-gradient(135deg, #a100b8 0%, #4b006e 100%);
+}
+
+[data-theme="dark"] {
+    --galerie-bg: #0d0d0d;
+    --galerie-card-bg: #1e1e1e;
+    --galerie-text: #bb86fc;
+    --galerie-accent: #bb86fc;
+    --galerie-gradient: linear-gradient(135deg, #bb86fc 0%, #7c4dff 100%);
+}
+
 body {
     font-family: 'Montserrat', Arial, sans-serif;
-    background: #f7f7f9;
+    background: var(--galerie-bg);
+    color: var(--galerie-text);
     margin: 0;
     padding: 0;
 }
@@ -17,7 +34,7 @@ body {
     text-align: center;
     margin-bottom: 40px;
     padding: 20px;
-    background: linear-gradient(135deg, #a100b8 0%, #4b006e 100%);
+    background: var(--galerie-gradient);
     color: #fff;
     border-radius: 15px;
     box-shadow: 0 4px 15px rgba(161, 0, 184, 0.3);
@@ -38,7 +55,7 @@ body {
 .btn-retour {
     display: inline-block;
     background: #fff;
-    color: #a100b8;
+    color: var(--galerie-accent);
     border: 2px solid #fff;
     border-radius: 25px;
     padding: 12px 24px;
@@ -65,7 +82,7 @@ body {
 }
 
 .galerie-item {
-    background: #fff;
+    background: var(--galerie-card-bg);
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -97,13 +114,14 @@ body {
 
 .galerie-info {
     padding: 15px;
-    background: #fff;
+    background: var(--galerie-card-bg);
+    color: var(--galerie-text);
 }
 
 .galerie-info h3 {
     margin: 0 0 8px 0;
     font-size: 1.1em;
-    color: #333;
+    color: var(--galerie-text);
     font-weight: 600;
 }
 

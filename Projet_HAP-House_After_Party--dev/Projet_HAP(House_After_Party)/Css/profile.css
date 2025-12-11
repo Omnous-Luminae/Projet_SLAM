@@ -1,3 +1,25 @@
+:root {
+    --profile-section-bg: #ffffff;
+    --profile-text: #2c3e50;
+    --profile-text-secondary: #34495e;
+    --profile-border: #bdc3c7;
+    --profile-accent: #e74c3c;
+    --profile-input-bg: #ffffff;
+    --profile-input-border: #bdc3c7;
+    --profile-input-focus: #3498db;
+}
+
+[data-theme="dark"] {
+    --profile-section-bg: #1e1e1e;
+    --profile-text: #bb86fc;
+    --profile-text-secondary: #bb86fc;
+    --profile-border: #333;
+    --profile-accent: #bb86fc;
+    --profile-input-bg: #2a2a2a;
+    --profile-input-border: #444;
+    --profile-input-focus: #bb86fc;
+}
+
 .profile-container {
     max-width: 800px;
     margin: 0 auto;
@@ -5,7 +27,7 @@
 }
 
 .profile-section {
-    background: #ffffff;
+    background: var(--profile-section-bg);
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     padding: 20px;
@@ -13,10 +35,10 @@
 }
 
 .profile-section h3 {
-    color: #2c3e50;
+    color: var(--profile-text);
     margin-bottom: 20px;
     padding-bottom: 10px;
-    border-bottom: 2px solid #e74c3c;
+    border-bottom: 2px solid var(--profile-accent);
 }
 
 .password-form {
@@ -31,21 +53,23 @@
 .password-form label {
     display: block;
     margin-bottom: 5px;
-    color: #34495e;
+    color: var(--profile-text-secondary);
     font-weight: 500;
 }
 
 .password-form input[type="password"] {
     width: 100%;
     padding: 10px;
-    border: 1px solid #bdc3c7;
+    border: 1px solid var(--profile-input-border);
+    background: var(--profile-input-bg);
+    color: var(--profile-text);
     border-radius: 4px;
     font-size: 16px;
     transition: border-color 0.3s;
 }
 
 .password-form input[type="password"]:focus {
-    border-color: #3498db;
+    border-color: var(--profile-input-focus);
     outline: none;
 }
 

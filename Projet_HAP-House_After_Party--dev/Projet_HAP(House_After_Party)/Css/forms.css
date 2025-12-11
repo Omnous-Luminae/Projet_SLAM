@@ -385,3 +385,277 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #4b006e, #8b008b);
 }
+
+/* Admin-Specific Enhancements */
+.admin-form {
+    --admin-accent: #ff6b35;
+    --admin-shadow: 0 8px 32px rgba(255, 107, 53, 0.2);
+    --admin-border: 2px solid #ff6b35;
+}
+
+.admin-form .form-container {
+    border: var(--admin-border);
+    box-shadow: var(--admin-shadow);
+    position: relative;
+}
+
+.admin-form .form-container::before {
+    background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 50%, #ff6b35 100%);
+    height: 8px;
+}
+
+.admin-form .form-header h2::after {
+    content: "🔒 Admin";
+    font-size: 0.8em;
+    color: #ff6b35;
+    margin-left: 10px;
+    font-weight: 600;
+}
+
+.admin-form .form-group input,
+.admin-form .form-group select,
+.admin-form .form-group textarea {
+    font-size: 1.1em;
+    padding: 16px 20px;
+    border-radius: 14px;
+    border: 2px solid #e1e1e1;
+    transition: all 0.3s ease;
+}
+
+.admin-form .form-group input:focus,
+.admin-form .form-group select:focus,
+.admin-form .form-group textarea:focus {
+    border-color: #ff6b35;
+    box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.15);
+    transform: translateY(-3px);
+}
+
+.admin-form .btn {
+    font-size: 1.1em;
+    padding: 16px 32px;
+    border-radius: 14px;
+    font-weight: 700;
+    min-width: 140px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-form .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.admin-form .btn:hover::before {
+    left: 100%;
+}
+
+.admin-form .btn-primary {
+    background: linear-gradient(135deg, #ff6b35, #ff8c42);
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+}
+
+.admin-form .btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5);
+}
+
+.admin-form .btn-secondary {
+    background: #f8f9fa;
+    color: #ff6b35;
+    border: 2px solid #ff6b35;
+}
+
+.admin-form .btn-secondary:hover {
+    background: #ff6b35;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.admin-form .btn-danger {
+    background: linear-gradient(135deg, #dc3545, #e74c3c);
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
+.admin-form .btn-danger:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.5);
+}
+
+.admin-form .data-table th {
+    background: linear-gradient(135deg, #ff6b35, #ff8c42);
+    font-size: 0.9em;
+    padding: 18px 22px;
+}
+
+.admin-form .data-table td {
+    padding: 18px 22px;
+    font-size: 1em;
+}
+
+.admin-form .data-table tr:hover {
+    background: rgba(255, 107, 53, 0.08);
+    transform: scale(1.01);
+    transition: all 0.3s ease;
+}
+
+.admin-form .message {
+    font-size: 1.1em;
+    padding: 18px 26px;
+    border-radius: 14px;
+    font-weight: 600;
+}
+
+.admin-form .message.success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.admin-form .message.error {
+    background: linear-gradient(135deg, #dc3545, #fd7e14);
+    color: white;
+}
+
+.admin-form .form-section {
+    border: 1px solid rgba(255, 107, 53, 0.2);
+    background: linear-gradient(135deg, #fdfdfe 0%, #ffffff 100%);
+}
+
+.admin-form .back-link {
+    color: #ff6b35;
+    font-weight: 700;
+}
+
+.admin-form .back-link:hover {
+    color: #e55a2b;
+    transform: translateX(-5px);
+}
+
+/* Admin Badge */
+.admin-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #ff6b35, #ff8c42);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+}
+
+.admin-badge::before {
+    content: "🔐";
+    font-size: 1.2em;
+}
+
+/* Enhanced Responsiveness for Admin Forms */
+@media (max-width: 768px) {
+    .admin-form .form-container {
+        margin: 20px 10px;
+        padding: 30px 20px;
+    }
+
+    .admin-form .form-header h2 {
+        font-size: 2em;
+    }
+
+    .admin-form .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .admin-form .data-table th,
+    .admin-form .data-table td {
+        padding: 14px 16px;
+        font-size: 0.9em;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-form .form-container {
+        margin: 10px 5px;
+        padding: 20px 15px;
+    }
+
+    .admin-form .form-header h2 {
+        font-size: 1.5em;
+    }
+
+    .admin-form .form-group input,
+    .admin-form .form-group select,
+    .admin-form .form-group textarea {
+        font-size: 1em;
+        padding: 14px 16px;
+    }
+
+    .admin-form .btn {
+        padding: 14px 24px;
+        font-size: 1em;
+    }
+}
+
+/* Admin Form Animations */
+@keyframes adminPulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 107, 53, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0); }
+}
+
+.admin-form .btn-primary {
+    animation: adminPulse 2s infinite;
+}
+
+.admin-form .btn-primary:hover {
+    animation: none;
+}
+
+/* Admin Tooltip */
+.admin-tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+}
+
+.admin-tooltip .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px 12px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.85em;
+}
+
+.admin-tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+.admin-tooltip .tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
