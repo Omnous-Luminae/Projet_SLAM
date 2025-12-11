@@ -253,7 +253,7 @@ try {
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container admin-form">
         <div class="header">
             <h2>🏠 Gestion des Biens</h2>
             <p>Gérez les biens disponibles sur la plateforme</p>
@@ -312,7 +312,7 @@ try {
                                             <input type="hidden" name="id_biens" value="<?= htmlspecialchars($bien['id_biens']) ?>">
                                             <button type="submit" name="edit_mode" value="<?= htmlspecialchars($bien['id_biens']) ?>" class="btn btn-secondary">Modifier</button>
                                         </form>
-                                        <a href="?manage=compose&id=<?= htmlspecialchars($bien['id_biens']) ?>" class="btn btn-secondary">Gérer composition</a>
+                                        <a href="Compose.form.php?id_bien=<?= htmlspecialchars($bien['id_biens']) ?>" class="btn btn-secondary" title="Gérer les équipements de ce bien">⚙️ Composition</a>
                                         <a href="?manage=tarif&id=<?= htmlspecialchars($bien['id_biens']) ?>" class="btn btn-secondary">Gérer tarifs</a>
                                         <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce bien ?');">
                                             <input type="hidden" name="id_biens" value="<?= htmlspecialchars($bien['id_biens']) ?>">

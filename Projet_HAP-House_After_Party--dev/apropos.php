@@ -93,6 +93,11 @@ require_once 'Projet_HAP(House_After_Party)/config/db.php';
                     <a href="Projet_HAP(House_After_Party)/forms/Bien.form.php" class="btn">Gérer les Biens</a>
                 </div>
                 <div class="management-card">
+                    <h3>🔍 Validation des Biens</h3>
+                    <p>Validez ou refusez les nouveaux biens proposés.</p>
+                    <a href="Projet_HAP(House_After_Party)/forms/validate_biens.php" class="btn">Valider les Biens</a>
+                </div>
+                <div class="management-card">
                     <h3>👥 Gestion des Locataires</h3>
                     <p>Gérez les informations des locataires physiques et moraux.</p>
                     <a href="Projet_HAP(House_After_Party)/forms/Locataires.form.php" class="btn">Gérer les Locataires</a>

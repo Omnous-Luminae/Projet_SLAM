@@ -1,7 +1,15 @@
+// Helper function to convert string to title case
+function titleCase(str) {
+    return str.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+}
+
 // Autocomplete functionality for communes
 function initCommuneAutocomplete(selector, hiddenSelector) {
+    console.log('Initializing commune autocomplete for:', selector, hiddenSelector);
+    
     $(selector).autocomplete({
         source: function(request, response) {
+            console.log('Commune autocomplete - searching for:', request.term);
             $.ajax({
                 url: "../api/search_communes.php",
                 dataType: "json",
@@ -9,20 +17,50 @@ function initCommuneAutocomplete(selector, hiddenSelector) {
                     q: request.term
                 },
                 success: function(data) {
-                    response(data);
+                    console.log('search_communes autocomplete results:', data);
+                    if (!data || data.length === 0) {
+                        console.warn('No communes found for:', request.term);
+                    }
+                    response(data.map(item => ({
+                        label: titleCase(item.label),
+                        value: titleCase(item.label),
+                        id: item.id,
+                        code_insee: item.code_insee
+                    })));
+                },
+                error: function(xhr, status, error) {
+                    console.error('Commune autocomplete error:', status, error, xhr.responseText);
+                    response([]);
                 }
             });
         },
         minLength: 2,
-        select: function(event, ui) {
+    select: function(event, ui) {
+            console.log('Commune selected:', ui.item);
             $(selector).val(ui.item.label);
             $(hiddenSelector).val(ui.item.id);
+            
+            // Store code_insee in a data attribute for later use
+            if (ui.item.code_insee) {
+                $(selector).data('code_insee', ui.item.code_insee);
+                console.log('Stored code_insee:', ui.item.code_insee);
+                
+                // Trigger custom event to notify that commune was selected with code_insee
+                $(selector).trigger('commune-selected', [ui.item.code_insee]);
+            }
+            
+            // Trigger change event so status indicator updates
+            $(hiddenSelector).trigger('change');
             return false;
         }
     });
 
     $(selector).on('input', function() {
         $(hiddenSelector).val('');
+        // Clear stored code_insee
+        $(selector).removeData('code_insee');
+        // Trigger change event
+        $(hiddenSelector).trigger('change');
     });
 }
 
@@ -185,6 +223,12 @@ function initAddressAutocomplete(selector, onSelectCallback) {
         minLength: 3,
         select: function(event, ui) {
             $(selector).val(ui.item.label);
+            // Set commune_input if city is available
+            if (ui.item.properties && ui.item.properties.city) {
+                var pc = ui.item.properties.postcode || '';
+                var ct = ui.item.properties.city;
+                $('#commune_input').val(ct + (pc ? ' (' + pc + ')' : ''));
+            }
             if (typeof onSelectCallback === 'function') {
                 onSelectCallback(ui.item);
             }

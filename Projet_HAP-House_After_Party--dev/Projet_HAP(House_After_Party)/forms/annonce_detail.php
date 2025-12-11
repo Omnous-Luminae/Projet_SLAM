@@ -751,41 +751,7 @@ if (isset($_SESSION['user_id'])) {
             <?php endif; ?>
         </section>
 
-        <!-- Calendrier des indisponibilités (réservations) pour tous, même déconnecté -->
-        <section class="calendar-section" style="margin-top:48px;">
-            <h3>Indisponibilités (réservations)</h3>
-            <div id="calendar" style="max-width:700px;margin:0 auto 32px auto;"></div>
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                var calendarEl = document.getElementById('calendar');
-                var calendar = new FullCalendar.Calendar(calendarEl, {
-                    initialView: 'dayGridMonth',
-                    locale: 'fr',
-                    height: 480,
-                    events: [
-                        <?php
-                        $stmt = $pdo->prepare('SELECT date_debut_reservation, date_fin_reservation FROM Reservation WHERE id_biens = ?');
-                        $stmt->execute([$id_bien]);
-                        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $resa) {
-                            $start = htmlspecialchars($resa['date_debut_reservation']);
-                            $end = htmlspecialchars($resa['date_fin_reservation']);
-                            echo "{ start: '$start', end: '$end', display: 'background', color: '#a100b8', title: 'Indisponible' },\n";
-                        }
-                        ?>
-                    ],
-                    headerToolbar: {
-                        left: 'prev,next today',
-                        center: 'title',
-                        right: ''
-                    },
-                    selectable: false,
-                    editable: false,
-                    eventDisplay: 'block',
-                });
-                calendar.render();
-            });
-            </script>
-        </section>
+
     </div>
 
     <!-- jQuery -->

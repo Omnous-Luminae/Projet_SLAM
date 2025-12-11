@@ -1,3 +1,23 @@
+:root {
+    --blog-bg: #ffffff;
+    --blog-text: #2c3e50;
+    --blog-text-secondary: #34495e;
+    --blog-border: #e0e0e0;
+    --blog-accent: #3498db;
+    --blog-rating: #f1c40f;
+    --blog-rating-hover: #fff9e6;
+}
+
+[data-theme="dark"] {
+    --blog-bg: #1e1e1e;
+    --blog-text: #bb86fc;
+    --blog-text-secondary: #bb86fc;
+    --blog-border: #333;
+    --blog-accent: #bb86fc;
+    --blog-rating: #ffd700;
+    --blog-rating-hover: #2a2a2a;
+}
+
 .blog-container {
     max-width: 900px;
     margin: 0 auto;
@@ -10,14 +30,14 @@
 }
 
 .blog-header h2 {
-    color: #2c3e50;
+    color: var(--blog-text);
     font-size: 2.5em;
     margin-bottom: 10px;
 }
 
 .back-link {
     display: inline-block;
-    color: #3498db;
+    color: var(--blog-accent);
     text-decoration: none;
     margin-bottom: 30px;
     transition: color 0.3s;
@@ -28,7 +48,7 @@
 }
 
 .form-section {
-    background: #ffffff;
+    background: var(--blog-bg);
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     padding: 30px;
@@ -41,7 +61,7 @@
 
 .form-group label {
     display: block;
-    color: #34495e;
+    color: var(--blog-text-secondary);
     margin-bottom: 8px;
     font-weight: 500;
 }
@@ -49,14 +69,16 @@
 .form-group input[type="text"] {
     width: 100%;
     padding: 12px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--blog-border);
+    background: var(--blog-bg);
+    color: var(--blog-text);
     border-radius: 6px;
     font-size: 16px;
     transition: border-color 0.3s;
 }
 
 .form-group input[type="text"]:focus {
-    border-color: #3498db;
+    border-color: var(--blog-accent);
     outline: none;
 }
 
@@ -69,26 +91,30 @@
 .rating-label {
     cursor: pointer;
     padding: 8px 15px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--blog-border);
+    background: var(--blog-bg);
+    color: var(--blog-text);
     border-radius: 20px;
     transition: all 0.3s;
 }
 
 .rating-label:hover {
-    border-color: #f1c40f;
-    background: #fff9e6;
+    border-color: var(--blog-rating);
+    background: var(--blog-rating-hover);
 }
 
 input[type="radio"]:checked + .rating-label {
-    background: #f1c40f;
-    border-color: #f1c40f;
+    background: var(--blog-rating);
+    border-color: var(--blog-rating);
     color: white;
 }
 
 .form-group textarea {
     width: 100%;
     padding: 12px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--blog-border);
+    background: var(--blog-bg);
+    color: var(--blog-text);
     border-radius: 6px;
     min-height: 120px;
     font-size: 16px;
@@ -97,7 +123,7 @@ input[type="radio"]:checked + .rating-label {
 }
 
 .form-group textarea:focus {
-    border-color: #3498db;
+    border-color: var(--blog-accent);
     outline: none;
 }
 
