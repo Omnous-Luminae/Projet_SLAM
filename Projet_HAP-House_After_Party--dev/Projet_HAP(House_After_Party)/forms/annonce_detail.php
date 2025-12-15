@@ -27,8 +27,8 @@ try {
         if (isset($_SESSION['user_id'])) {
             $userId = intval($_SESSION['user_id']);
             $userName = $_SESSION['user_name'] ?? '';
-            $userRole = $_SESSION['user_role'] ?? 'user'; // Assumer 'user' par défaut
-            if ($userRole === 'admin' || (isset($bien['created_by_id']) && $bien['created_by_id'] == $userId) || (isset($bien['created_by_name']) && $bien['created_by_name'] == $userName)) {
+            $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'animateur';
+            if ($isAdmin || (isset($bien['created_by_id']) && $bien['created_by_id'] == $userId) || (isset($bien['created_by_name']) && $bien['created_by_name'] == $userName)) {
                 $canEdit = true;
             }
         }
@@ -238,6 +238,10 @@ try {
                 // Supprimer les tarifs existants pour ce bien
                 $delTarif = $pdo->prepare('DELETE FROM Tarif WHERE id_biens = ?');
                 $delTarif->execute([$id_bien]);
+                
+                // Supprimer les tarifs par défaut pour ce bien
+                $delTarifDefaut = $pdo->prepare('DELETE FROM Tarif_Defaut WHERE id_biens = ?');
+                $delTarifDefaut->execute([$id_bien]);
 
                 // Insérer les nouveaux tarifs depuis le tableau tarifs
                 if (isset($_POST['tarifs']) && is_array($_POST['tarifs'])) {
@@ -259,7 +263,7 @@ try {
                     if (!is_dir($uploadDir)) {
                         mkdir($uploadDir, 0755, true);
                     }
-                    $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+                    $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
                     foreach ($_FILES['photos']['tmp_name'] as $key => $tmpName) {
                         if ($_FILES['photos']['error'][$key] === UPLOAD_ERR_OK) {
                             $fileName = basename($_FILES['photos']['name'][$key]);
@@ -267,10 +271,10 @@ try {
                             if (in_array($fileExtension, $allowedExtensions)) {
                                 $newFileName = uniqid('img_', true) . '.' . $fileExtension;
                                 $destPath = $uploadDir . $newFileName;
-                                $lienPhoto = 'images/uploads/' . $newFileName;
                                 if (move_uploaded_file($tmpName, $destPath)) {
+                                    // Save photo reference to database (just filename, display code uses basename)
                                     $stmtPhoto = $pdo->prepare('INSERT INTO Photos (nom_photos, lien_photo, id_biens) VALUES (?, ?, ?)');
-                                    $stmtPhoto->execute([$fileName, $lienPhoto, $id_bien]);
+                                    $stmtPhoto->execute([$fileName, $newFileName, $id_bien]);
                                 }
                             }
                         }
@@ -324,6 +328,9 @@ try {
             // Supprimer les tarifs associés
             $stmt = $pdo->prepare('DELETE FROM Tarif WHERE id_biens = ?');
             $stmt->execute([$id_bien]);
+            // Supprimer les tarifs par défaut associés
+            $stmt = $pdo->prepare('DELETE FROM Tarif_Defaut WHERE id_biens = ?');
+            $stmt->execute([$id_bien]);
             // Supprimer les photos associées
             $stmt = $pdo->prepare('DELETE FROM Photos WHERE id_biens = ?');
             $stmt->execute([$id_bien]);
@@ -347,10 +354,13 @@ try {
             $userId = intval($_SESSION['user_id']);
             
             if ($reviewBienId > 0 && ($rating > 0 || $content !== '')) {
-                $ins = $pdo->prepare('INSERT INTO Reviews (id_biens, id_locataire, rating, content, created_at) VALUES (?, ?, ?, ?, NOW())');
-                $ins->execute([$reviewBienId, $userId, $rating > 0 ? $rating : null, $content]);
-                header('Location: annonce_detail.php?id=' . $id_bien);
-                exit;
+                try {
+                    $ins = $pdo->prepare('INSERT INTO Reviews (id_biens, id_locataire, rating, content, created_at, validated) VALUES (?, ?, ?, ?, NOW(), FALSE)');
+                    $ins->execute([$reviewBienId, $userId, $rating > 0 ? $rating : null, $content]);
+                    $message = "Votre avis a été soumis et sera validé par un administrateur.";
+                } catch (PDOException $e) {
+                    $message = 'Erreur lors de la publication de l\'avis : ' . $e->getMessage();
+                }
             } else {
                 $message = 'Veuillez saisir une note ou un commentaire.';
             }
@@ -422,7 +432,15 @@ if (isset($_SESSION['user_id'])) {
                 <?php foreach ($photos as $photo): ?>
                     <?php
                     $photoLabel = trim(str_ireplace('photo', '', $photo['nom_photos']));
-                    $photoPath = '/' . $photo['lien_photo'];
+                    // Gérer les différents formats de chemin de photos
+                    $lienPhoto = $photo['lien_photo'];
+                    if (strpos($lienPhoto, 'Projet_HAP') !== false || strpos($lienPhoto, 'images/uploads/') !== false) {
+                        // Ancien format avec chemin complet
+                        $photoPath = '/' . $lienPhoto;
+                    } else {
+                        // Nouveau format avec juste le nom du fichier
+                        $photoPath = '../images/uploads/' . basename($lienPhoto);
+                    }
                     ?>
                     <a href="<?= htmlspecialchars($photoPath) ?>" data-lightbox="gallery" data-title="<?= htmlspecialchars($photoLabel) ?>">
                         <img src="<?= htmlspecialchars($photoPath) ?>" alt="<?= htmlspecialchars($bien['nom_biens']) ?>" class="gallery-image">
@@ -659,17 +677,12 @@ if (isset($_SESSION['user_id'])) {
                         <input type="checkbox" id="animal_biens" name="animal_biens" <?= $bien['animal_biens'] ? 'checked' : '' ?>>
                     </div>
                     <div class="form-group">
-                        <label for="photos-0">Photos:</label>
-                        <div id="photos-container">
-                            <div class="photo-input-row" data-index="0" style="display:flex;gap:8px;align-items:center;">
-                                <input id="photos-0" type="file" name="photos[]" class="photo-input" accept="image/*">
-                                <button type="button" class="remove-photo-input" style="display:none;">Supprimer</button>
-                            </div>
-                        </div>
+                        <label for="photos_input">Photos:</label>
+                        <div id="photos-container"></div>
                         <div id="photo-previews" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"></div>
                         <div style="margin-top:8px;">
-                            <button type="button" id="add-photo-input">Ajouter une photo</button>
-                            <small style="display:block;color:#666;margin-top:6px;">Vous pouvez sélectionner plusieurs fichiers en une fois ou ajouter plusieurs champs. Les champs séparés conservent chaque sélection.</small>
+                            <button type="button" id="add-photo-input">Sélectionner des photos</button>
+                            <small style="display:block;color:#666;margin-top:6px;">Glissez-déposez vos photos ou sélectionnez plusieurs fichiers à la fois.</small>
                         </div>
                     </div>
                     <input type="submit" name="update_bien" value="Mettre à jour">
@@ -821,45 +834,95 @@ if (isset($_SESSION['user_id'])) {
                 $(this).closest('.tarif-item').remove();
             });
 
-            // Dynamic photo inputs
-            let photoIndex = 1;
-            $('#add-photo-input').on('click', function() {
-                const newRow = `
-                    <div class="photo-input-row" data-index="${photoIndex}" style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-                        <input id="photos-${photoIndex}" type="file" name="photos[]" class="photo-input" accept="image/*">
-                        <button type="button" class="remove-photo-input">Supprimer</button>
-                    </div>
-                `;
-                $('#photos-container').append(newRow);
-                photoIndex++;
-            });
+            // Photos : drag & drop + multiple selection handling
+            const photoDT = new DataTransfer();
+            const $photosInput = $('<input id="photos_input" type="file" name="photos[]" accept="image/*" multiple style="display:none;">');
+            $('#photos-container').empty().append($photosInput);
 
-            $(document).on('click', '.remove-photo-input', function() {
-                $(this).closest('.photo-input-row').remove();
-            });
+            function refreshInputFiles() {
+                const input = document.getElementById('photos_input');
+                try { input.files = photoDT.files; } catch (e) { /* some browsers restrict setting files directly */ }
+            }
 
-            // Photo preview
-            $(document).on('change', '.photo-input', function() {
-                const file = this.files[0];
-                const index = $(this).closest('.photo-input-row').data('index');
-                const previewContainer = $('#photo-previews');
-                const existingPreview = previewContainer.find(`.preview-${index}`);
-
-                if (file) {
+            function renderPreviews() {
+                $('#photo-previews').empty();
+                for (let i = 0; i < photoDT.files.length; i++) {
+                    const file = photoDT.files[i];
+                    const idx = i;
                     const reader = new FileReader();
-                    reader.onload = function(e) {
-                        if (existingPreview.length) {
-                            existingPreview.attr('src', e.target.result);
-                        } else {
-                            const img = `<img src="${e.target.result}" alt="Preview" class="preview-${index}" style="max-width:100px;max-height:100px;border:1px solid #ccc;">`;
-                            previewContainer.append(img);
-                        }
+                    reader.onload = function(evt) {
+                        const $preview = $('<div class="photo-preview" data-preview-index="' + idx + '" style="position:relative;width:100px;height:70px;border:1px solid #ddd;padding:4px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:6px;overflow:hidden;margin-right:8px;margin-bottom:8px;"></div>');
+                        const $img = $('<img src="' + evt.target.result + '" style="max-width:100%;max-height:100%;display:block;">');
+                        const $remove = $('<button type="button" class="remove-preview" data-remove-index="' + idx + '" style="position:absolute;top:2px;right:2px;background:#fff;border:0;padding:2px 6px;border-radius:4px;cursor:pointer;">✕</button>');
+                        $remove.on('click', function(){
+                            const removeIndex = parseInt($(this).attr('data-remove-index'));
+                            const newDT = new DataTransfer();
+                            for (let j = 0; j < photoDT.files.length; j++) {
+                                if (j === removeIndex) continue;
+                                newDT.items.add(photoDT.files[j]);
+                            }
+                            // replace contents of photoDT by copying
+                            while (photoDT.items.length > 0) photoDT.items.remove(0);
+                            for (let k = 0; k < newDT.files.length; k++) photoDT.items.add(newDT.files[k]);
+                            refreshInputFiles();
+                            renderPreviews();
+                        });
+                        $preview.append($img).append($remove);
+                        $('#photo-previews').append($preview);
                     };
                     reader.readAsDataURL(file);
-                } else {
-                    existingPreview.remove();
                 }
+            }
+
+            // Add files to DataTransfer and render previews
+            function addFilesToDT(files) {
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+                let rejectedFiles = [];
+                
+                for (let f of files) {
+                    // Validate file type
+                    const fileName = f.name.toLowerCase();
+                    const fileType = f.type.toLowerCase();
+                    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+                    const hasValidMimeType = allowedTypes.includes(fileType);
+                    
+                    if (!hasValidExtension || !hasValidMimeType) {
+                        rejectedFiles.push(f.name);
+                        continue;
+                    }
+                    
+                    // skip duplicates (name+size)
+                    let exists = false;
+                    for (let i = 0; i < photoDT.files.length; i++) { if (photoDT.files[i].name === f.name && photoDT.files[i].size === f.size) { exists = true; break; } }
+                    if (!exists) photoDT.items.add(f);
+                }
+                
+                if (rejectedFiles.length > 0) {
+                    alert('❌ Fichiers rejetés (format non autorisé) :\n' + rejectedFiles.join('\n') + '\n\nFormats acceptés : JPG, PNG, GIF, WEBP');
+                }
+                
+                refreshInputFiles();
+                renderPreviews();
+            }
+
+            // open file selector
+            $('#add-photo-input').off('click').on('click', function() { $('#photos_input').trigger('click'); });
+
+            // when user selects files via picker
+            $(document).on('change', '#photos_input', function(e) {
+                const files = e.target.files;
+                addFilesToDT(files);
             });
+
+            // drag & drop support on photos container area
+            const $dropZone = $('<div id="photo-dropzone" style="border:2px dashed #ccc;border-radius:6px;padding:16px;text-align:center;cursor:pointer;background:#fafafa;">Glissez-déposez vos photos ici ou cliquez pour sélectionner</div>');
+            $('#photos-container').prepend($dropZone);
+            $dropZone.on('click', function(){ $('#photos_input').trigger('click'); });
+
+            $dropZone.on('dragover', function(e){ e.preventDefault(); e.originalEvent.dataTransfer.dropEffect = 'copy'; $(this).css('border-color','#6aa6ff'); });
+            $dropZone.on('dragleave', function(e){ e.preventDefault(); $(this).css('border-color','#ccc'); });
+            $dropZone.on('drop', function(e){ e.preventDefault(); $(this).css('border-color','#ccc'); const dt = e.originalEvent.dataTransfer; if (dt && dt.files && dt.files.length) { addFilesToDT(dt.files); } });
         });
     </script>
     <script src="../js/autocomplete.js"></script>
@@ -881,7 +944,7 @@ if (isset($_SESSION['user_id'])) {
             tariffData.forEach(function(tarif) {
                 specialWeeksHtml += '<div style="background: white; padding: 8px; border-left: 4px solid #1976d2; border-radius: 2px;">' +
                     '<strong>Semaine ' + tarif.semaine_Tarif + ' (' + tarif.lib_saison + ')</strong> : ' +
-                    '<span style="color: #1976d2; font-weight: bold;">€' + parseFloat(tarif.tarif).toFixed(2) + '</span>/nuit' +
+                    '<span style="color: #1976d2; font-weight: bold;">€' + parseFloat(tarif.tarif).toFixed(2) + '</span>/semaine' +
                     '</div>';
             });
             
@@ -914,7 +977,7 @@ if (isset($_SESSION['user_id'])) {
                     var previousWeek = null;
                     
                     data.details.forEach(function(detail, index) {
-                        var weekLabel = 'Semaine ' + detail.week;
+                        var weekLabel = 'Semaine ' + detail.week + ' (' + detail.year + ')';
                         var rateInfo = detail.is_special ? 
                             '(tarif spécial, ' + detail.saison + ')' : 
                             '(tarif par défaut, ' + detail.saison + ')';
@@ -922,7 +985,7 @@ if (isset($_SESSION['user_id'])) {
                         breakdownHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #c8e6c9;">' +
                             '<div>' +
                                 '<strong>' + weekLabel + '</strong> ' + rateInfo +
-                                '<br><small style="color: #558b2f;">' + detail.nights + ' nuit(s) × €' + parseFloat(detail.price_per_night).toFixed(2) + '/nuit</small>' +
+                                '<br><small style="color: #558b2f;">Tarif hebdomadaire: €' + parseFloat(detail.price_per_week).toFixed(2) + '/semaine</small>' +
                             '</div>' +
                             '<div style="font-weight: 500; color: #1976d2;">€' + parseFloat(detail.subtotal).toFixed(2) + '</div>' +
                             '</div>';

@@ -34,6 +34,8 @@ require_once 'Projet_HAP(House_After_Party)/config/db.php';
                 <select id="form_selector" onchange="if(this.value) window.location.href=this.value;" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
                     <option value="">-- Choisir un formulaire --</option>
                     <option value="Projet_HAP(House_After_Party)/forms/Bien.form.php">Gestion des Biens</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/validate_biens.php">🔍 Validation des Biens</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/validate_reviews.php">🎭 Validation des Avis</option>
                     <option value="Projet_HAP(House_After_Party)/forms/Locataires.form.php">Gestion des Locataires</option>
                     <option value="Projet_HAP(House_After_Party)/forms/Reservation.form.php">Gestion des Réservations</option>
                     <option value="Projet_HAP(House_After_Party)/forms/Evenement.form.php">Gestion des Événements</option>
@@ -96,6 +98,11 @@ require_once 'Projet_HAP(House_After_Party)/config/db.php';
                     <h3>🔍 Validation des Biens</h3>
                     <p>Validez ou refusez les nouveaux biens proposés.</p>
                     <a href="Projet_HAP(House_After_Party)/forms/validate_biens.php" class="btn">Valider les Biens</a>
+                </div>
+                <div class="management-card">
+                    <h3>🎭 Validation des Avis</h3>
+                    <p>Modérez et validez les avis des locataires.</p>
+                    <a href="Projet_HAP(House_After_Party)/forms/validate_reviews.php" class="btn">Valider les Avis</a>
                 </div>
                 <div class="management-card">
                     <h3>👥 Gestion des Locataires</h3>

@@ -29,9 +29,9 @@ try {
                             $filename = uniqid() . '_' . basename($name);
                             $target_file = $target_dir . $filename;
                             if (move_uploaded_file($tmp_name, $target_file)) {
-                                // Enregistrement en base
+                                // Enregistrement en base avec chemin relatif simple
                                 $stmt = $pdo->prepare('INSERT INTO Photos (lien_photo, id_biens) VALUES (?, ?)');
-                                $stmt->execute(['Projet_HAP(House_After_Party)/images/uploads/' . $filename, $id_biens]);
+                                $stmt->execute([$filename, $id_biens]);
                             }
                         }
                     }

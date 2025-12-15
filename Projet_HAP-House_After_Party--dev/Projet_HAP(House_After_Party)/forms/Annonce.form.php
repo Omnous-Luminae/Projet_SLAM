@@ -108,17 +108,18 @@ try {
                         // proceed to insert
                         try {
                             // Try to insert with both created_by_name and created_by_id (if the column exists)
+                            // New announcements are not validated by default (validated = FALSE)
                             $createdById = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null;
-                            $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens, created_by_name, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                            $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens, created_by_name, created_by_id, validated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)');
                             $stmt->execute([$nom, $rue, $superficie, $desc, $animal, $nb_couchage, $final_id_commune, $id_type, $createdBy, $createdById]);
                         } catch (PDOException $e) {
                             try {
                                 // Fallback: only created_by_name
-                                $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens, created_by_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                                $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens, created_by_name, validated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)');
                                 $stmt->execute([$nom, $rue, $superficie, $desc, $animal, $nb_couchage, $final_id_commune, $id_type, $createdBy]);
                             } catch (PDOException $e2) {
                                 // Column might not exist; fallback to original INSERT without created_by info
-                                $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+                                $stmt = $pdo->prepare('INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, id_commune, id_type_biens, validated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, FALSE)');
                                 $stmt->execute([$nom, $rue, $superficie, $desc, $animal, $nb_couchage, $final_id_commune, $id_type]);
                             }
                         }
@@ -138,7 +139,34 @@ try {
                             }
                         }
 
-                        $message = "Annonce créée avec succès.";
+                        // Upload photos if present
+                        if (isset($_FILES['photos']) && !empty($_FILES['photos']['name'][0])) {
+                            $uploadDir = __DIR__ . '/../images/uploads/';
+                            if (!is_dir($uploadDir)) {
+                                mkdir($uploadDir, 0755, true);
+                            }
+                            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                            
+                            foreach ($_FILES['photos']['tmp_name'] as $key => $tmpName) {
+                                if ($_FILES['photos']['error'][$key] === UPLOAD_ERR_OK) {
+                                    $fileName = basename($_FILES['photos']['name'][$key]);
+                                    $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                                    
+                                    if (in_array($fileExtension, $allowedExtensions)) {
+                                        $newFileName = uniqid('img_', true) . '.' . $fileExtension;
+                                        $destPath = $uploadDir . $newFileName;
+                                        
+                                        if (move_uploaded_file($tmpName, $destPath)) {
+                                            // Save photo reference to database (just filename, display code uses basename)
+                                            $stmtPhoto = $pdo->prepare('INSERT INTO Photos (nom_photos, lien_photo, id_biens) VALUES (?, ?, ?)');
+                                            $stmtPhoto->execute([$fileName, $newFileName, $id_biens]);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        $message = "Annonce créée avec succès. Elle sera visible après validation par un administrateur.";
                     }
             } else {
                 $message = "Veuillez remplir tous les champs correctement.";
@@ -154,7 +182,8 @@ try {
         }
 
         // Build query for biens with search and pagination
-        $whereClause = 'WHERE (b.is_hidden IS NULL OR b.is_hidden = FALSE)';
+        // Only show validated announcements to users
+        $whereClause = 'WHERE (b.is_hidden IS NULL OR b.is_hidden = FALSE) AND b.validated = TRUE';
         $params = [];
 
         if ($searchCommuneId > 0) {
@@ -944,12 +973,32 @@ if (isset($pdo) && $pdo) {
 
             // Add files to DataTransfer and render previews
             function addFilesToDT(files) {
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+                let rejectedFiles = [];
+                
                 for (let f of files) {
+                    // Validate file type
+                    const fileName = f.name.toLowerCase();
+                    const fileType = f.type.toLowerCase();
+                    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+                    const hasValidMimeType = allowedTypes.includes(fileType);
+                    
+                    if (!hasValidExtension || !hasValidMimeType) {
+                        rejectedFiles.push(f.name);
+                        continue;
+                    }
+                    
                     // skip duplicates (name+size)
                     let exists = false;
                     for (let i = 0; i < photoDT.files.length; i++) { if (photoDT.files[i].name === f.name && photoDT.files[i].size === f.size) { exists = true; break; } }
                     if (!exists) photoDT.items.add(f);
                 }
+                
+                if (rejectedFiles.length > 0) {
+                    alert('❌ Fichiers rejetés (format non autorisé) :\n' + rejectedFiles.join('\n') + '\n\nFormats acceptés : JPG, PNG, GIF, WEBP');
+                }
+                
                 refreshInputFiles();
                 renderPreviews();
             }
@@ -1093,18 +1142,25 @@ if (isset($pdo) && $pdo) {
                         <div class="annonce-card-wrapper">
                             <a href="annonce_detail.php?id=<?= htmlspecialchars($b['id_biens']) ?>" class="annonce-card">
                                 <?php
-                                $imageSrc = isset($photos[$b['id_biens']]) && !empty($photos[$b['id_biens']])
-                                    ? '/' . htmlspecialchars($photos[$b['id_biens']][0]['lien_photo'])
-                                    : '/Projet_HAP(House_After_Party)/images/placeholder.jpg';
+                                // Gérer les différents formats de chemin de photos
+                                if (isset($photos[$b['id_biens']]) && !empty($photos[$b['id_biens']])) {
+                                    $lienPhoto = $photos[$b['id_biens']][0]['lien_photo'];
+                                    // Nettoyer le chemin et utiliser le bon chemin relatif
+                                    $filename = basename($lienPhoto);
+                                    $imageSrc = '../images/uploads/' . htmlspecialchars($filename);
+                                } else {
+                                    // Image placeholder SVG en data URI
+                                    $imageSrc = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23667eea" width="400" height="300"/%3E%3Ctext fill="%23ffffff" font-family="Arial" font-size="24" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EAucune image%3C/text%3E%3C/svg%3E';
+                                }
                                 ?>
-                                <img src="<?= $imageSrc ?>" alt="<?= htmlspecialchars($b['nom_biens']) ?>" class="annonce-image">
+                                <img src="<?= $imageSrc ?>" alt="<?= htmlspecialchars($b['nom_biens']) ?>" class="annonce-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23667eea%22 width=%22400%22 height=%22300%22/%3E%3Ctext fill=%22%23ffffff%22 font-family=%22Arial%22 font-size=%2224%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EImage non disponible%3C/text%3E%3C/svg%3E'">
                                 <div class="annonce-price">
                                     <?php
                                     // Utilisation de la classe Tarif
                                     $tarifClass = new Tarif(null, null, null, null, null, $pdo);
                                     $price = $tarifClass->getLatestTarifByBien($b['id_biens']);
                                     ?>
-                                    €<?= number_format($price, 2) ?>/nuit
+                                    €<?= number_format($price, 2) ?>/semaine
                                     <?php if (!empty($ratings[$b['id_biens']])): $r = $ratings[$b['id_biens']]; ?>
                                         <div style="font-size:0.9em;color:#f39c12;margin-top:6px;">
                                             <?= str_repeat('★', round($r['avg_rating'])) . str_repeat('☆', 5 - round($r['avg_rating'])) ?>

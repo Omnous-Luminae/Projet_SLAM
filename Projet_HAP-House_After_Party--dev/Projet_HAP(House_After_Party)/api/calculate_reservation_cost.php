@@ -13,6 +13,12 @@ if (!$id_bien || !$date_debut || !$date_fin) {
     exit;
 }
 
+// Validate date format
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_debut) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_fin)) {
+    echo json_encode(['error' => 'Format de date invalide. Utilisez YYYY-MM-DD', 'total' => 0, 'details' => []]);
+    exit;
+}
+
 try {
     $pdo = $pdo ?? null;
     if (!$pdo) {
@@ -22,13 +28,23 @@ try {
 
     $start = new DateTime($date_debut);
     $end = new DateTime($date_fin);
-    $end->modify('+1 day'); // Include end date
+    
+    // Calculate duration in weeks (tarifs are per week, not per night)
+    $interval = $start->diff($end);
+    $totalDays = $interval->days;
+    $numberOfWeeks = ceil($totalDays / 7); // Round up to full weeks
+    
+    if ($numberOfWeeks < 1) {
+        echo json_encode(['error' => 'La durée minimale de réservation est d\'une semaine', 'total' => 0, 'details' => []]);
+        exit;
+    }
 
     $details = [];
     $total = 0;
     $current = clone $start;
-
-    while ($current < $end) {
+    
+    // Process week by week
+    for ($weekIndex = 0; $weekIndex < $numberOfWeeks; $weekIndex++) {
         $dateStr = $current->format('Y-m-d');
         $week = intval($current->format('W'));
         $year = intval($current->format('Y'));
@@ -89,36 +105,30 @@ try {
             }
         }
 
-        // Group by week for cleaner output
+        // Store details for this week
         $weekKey = $year . '-W' . str_pad($week, 2, '0', STR_PAD_LEFT);
         
-        if (!isset($details[$weekKey])) {
-            $details[$weekKey] = [
-                'week' => $week,
-                'year' => $year,
-                'saison' => $saisonLabel,
-                'price_per_night' => $price,
-                'nights' => 0,
-                'subtotal' => 0,
-                'is_special' => $isSpecial,
-                'start_date' => $dateStr,
-                'end_date' => $dateStr
-            ];
-        }
-
-        $details[$weekKey]['nights']++;
-        $details[$weekKey]['subtotal'] += $price;
-        $details[$weekKey]['end_date'] = $dateStr;
+        $details[$weekKey] = [
+            'week' => $week,
+            'year' => $year,
+            'saison' => $saisonLabel,
+            'price_per_week' => $price,
+            'weeks' => 1,
+            'subtotal' => $price,
+            'is_special' => $isSpecial,
+            'start_date' => $dateStr
+        ];
+        
         $total += $price;
-
-        $current->modify('+1 day');
+        $current->modify('+7 days'); // Move to next week
     }
 
     echo json_encode([
         'total' => $total,
         'currency' => '€',
         'details' => array_values($details),
-        'night_count' => count($details) > 0 ? array_sum(array_column($details, 'nights')) : 0
+        'week_count' => $numberOfWeeks,
+        'duration_days' => $totalDays
     ]);
 } catch (Exception $e) {
     error_log('Error in calculate_reservation_cost.php: ' . $e->getMessage());

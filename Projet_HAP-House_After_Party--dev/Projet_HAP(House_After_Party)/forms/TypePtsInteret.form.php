@@ -64,60 +64,345 @@ try {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Types de Points d'Intérêt</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../Css/forms.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../Css/dashboard.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --hover-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateX(-5px);
+        }
+
+        .page-header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .page-header h2 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .page-header p {
+            margin: 0;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .success, .error {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .add-form {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .add-form h3 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .form-group input[type="text"] {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: 'Montserrat', sans-serif;
+            transition: all 0.3s;
+        }
+
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .types-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .type-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s;
+            border-left: 5px solid #667eea;
+        }
+
+        .type-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .type-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .type-id {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .type-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin: 15px 0;
+        }
+
+        .type-card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-edit, .btn-delete, .btn-save {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-edit {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-edit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-delete:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 233, 123, 0.4);
+        }
+
+        .edit-input {
+            width: 100%;
+            padding: 12px 20px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            font-family: 'Montserrat', sans-serif;
+            margin-bottom: 15px;
+        }
+
+        .edit-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .empty-state {
+            background: white;
+            border-radius: 15px;
+            padding: 60px 30px;
+            text-align: center;
+            box-shadow: var(--card-shadow);
+        }
+
+        .empty-state p {
+            font-size: 18px;
+            color: #999;
+            margin: 0;
+        }
+
+        @media (max-width: 768px) {
+            .types-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-group {
+                flex-direction: column;
+            }
+
+            .form-group input[type="text"] {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
-        <h2>Gestion des Types de Points d'Intérêt</h2>
-        <?php if ($message): ?>
-            <div class="success"><?= htmlspecialchars($message) ?></div>
-        <?php endif; ?>
-        <form method="post">
-            <input type="text" id="lib_type_points_interet" name="lib_type_points_interet" placeholder="Nom du type" required>
-            <input type="submit" name="add_type_pts_interet" value="Ajouter">
-        </form>
-        <div class="type-list">
-            <table>
-                <tr>
-                    <th>ID</th>
-                    <th>Nom</th>
-                    <th>Actions</th>
-                </tr>
-                <?php foreach ($types as $t): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($t['id_type_points_interet']) ?></td>
-                        <td>
-                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $t['id_type_points_interet']): ?>
-                                <form method="post" style="display:inline;">
-                                    <input type="hidden" name="id_type_points_interet" value="<?= htmlspecialchars($t['id_type_points_interet']) ?>">
-                                    <input type="text" name="lib_type_points_interet_edit" value="<?= htmlspecialchars($t['lib_type_points_interet']) ?>" required>
-                                    <button type="submit" name="edit_type_pts_interet">Enregistrer</button>
-                                </form>
-                            <?php else: ?>
-                                <?= htmlspecialchars($t['lib_type_points_interet']) ?>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $t['id_type_points_interet']): ?>
-                                <!-- Rien, on est en mode édition -->
-                            <?php else: ?>
-                                <form method="post" style="display:inline;">
-                                    <input type="hidden" name="id_type_points_interet" value="<?= htmlspecialchars($t['id_type_points_interet']) ?>">
-                                    <button type="submit" name="edit_mode" value="<?= htmlspecialchars($t['id_type_points_interet']) ?>">Modifier</button>
-                                </form>
-                                <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce type ?');">
-                                    <input type="hidden" name="id_type_points_interet" value="<?= htmlspecialchars($t['id_type_points_interet']) ?>">
-                                    <button type="submit" name="delete_type_pts_interet">Supprimer</button>
-                                </form>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
+        <a href="/../index.php" class="back-link">← Retour à l'accueil</a>
+        
+        <div class="page-header">
+            <h2>🏷️ Gestion des Types de Points d'Intérêt</h2>
+            <p>Gérez les catégories de lieux à découvrir (bars, restaurants, monuments...)</p>
         </div>
+
+        <?php if ($message): ?>
+            <div class="<?= strpos($message, 'Erreur') !== false || strpos($message, 'existe déjà') !== false || strpos($message, 'vide') !== false ? 'error' : 'success' ?>">
+                <?= htmlspecialchars($message) ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="add-form">
+            <h3>➕ Ajouter un nouveau type</h3>
+            <form method="post">
+                <div class="form-group">
+                    <input type="text" id="lib_type_points_interet" name="lib_type_points_interet" placeholder="Nom du type (ex: Bar, Restaurant, Monument...)" required>
+                    <button type="submit" name="add_type_pts_interet" class="btn-primary">Ajouter</button>
+                </div>
+            </form>
+        </div>
+
+        <?php if (!empty($types)): ?>
+            <div class="types-grid">
+                <?php foreach ($types as $t): ?>
+                    <div class="type-card">
+                        <div class="type-card-header">
+                            <span class="type-id">#<?= htmlspecialchars($t['id_type_points_interet']) ?></span>
+                        </div>
+                        
+                        <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $t['id_type_points_interet']): ?>
+                            <form method="post">
+                                <input type="hidden" name="id_type_points_interet" value="<?= htmlspecialchars($t['id_type_points_interet']) ?>">
+                                <input type="text" name="lib_type_points_interet_edit" value="<?= htmlspecialchars($t['lib_type_points_interet']) ?>" class="edit-input" required autofocus>
+                                <button type="submit" name="edit_type_pts_interet" class="btn-save">
+                                    ✓ Enregistrer
+                                </button>
+                            </form>
+                        <?php else: ?>
+                            <div class="type-name"><?= htmlspecialchars($t['lib_type_points_interet']) ?></div>
+                            <div class="type-card-actions">
+                                <form method="post" style="flex: 1;">
+                                    <input type="hidden" name="id_type_points_interet" value="<?= htmlspecialchars($t['id_type_points_interet']) ?>">
+                                    <button type="submit" name="edit_mode" value="<?= htmlspecialchars($t['id_type_points_interet']) ?>" class="btn-edit">
+                                        ✏️ Modifier
+                                    </button>
+                                </form>
+                                <form method="post" style="flex: 1;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce type ?');">
+                                    <input type="hidden" name="id_type_points_interet" value="<?= htmlspecialchars($t['id_type_points_interet']) ?>">
+                                    <button type="submit" name="delete_type_pts_interet" class="btn-delete">
+                                        🗑️ Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="empty-state">
+                <p>Aucun type de point d'intérêt pour le moment. Commencez par en ajouter un !</p>
+            </div>
+        <?php endif; ?>
     </div>
 
     <script src="../js/confirm_delete.js"></script>
