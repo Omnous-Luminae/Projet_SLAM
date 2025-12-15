@@ -84,25 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         }
     }
 
-    // Vérification côté serveur que l'adresse existe réellement via adresse.data.gouv.fr
-    if (!empty($rue_locataire_only)) {
-        $query = $rue_locataire_only;
-        $url = 'https://api-adresse.data.gouv.fr/search/?q=' . urlencode($query) . '&limit=1';
-        if (!empty($id_commune)) {
-            // include citycode to narrow the search when available
-            $url .= '&citycode=' . urlencode($id_commune);
-        }
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        $apiResp = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        $apiData = $apiResp ? json_decode($apiResp, true) : null;
-        if (!$apiData || empty($apiData['features'])) {
-            $errors[] = "Veuillez sélectionner une adresse existante via l'autocomplétion (rue).";
-        }
+    // Validation basique de l'adresse : vérifier qu'elle contient au moins quelques caractères
+    // La validation stricte via API a été supprimée car elle peut rejeter des adresses valides
+    // L'autocomplétion aide l'utilisateur mais n'est pas obligatoire
+    if (!empty($rue_locataire_only) && strlen(trim($rue_locataire_only)) < 3) {
+        $errors[] = "❌ Le nom de la rue doit contenir au moins 3 caractères.";
     }
 
     // Validate SIREN/SIRET if provided using Luhn
@@ -160,7 +146,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         && preg_match('/[0-9]/', $password_locataire)
         && preg_match('/[\W_]/', $password_locataire);
     if (!$pw_ok) {
-        $errors[] = "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.";
+        $errors[] = "❌ Mot de passe trop faible. Il doit contenir au minimum :<br>" .
+                    "&nbsp;&nbsp;• 8 caractères<br>" .
+                    "&nbsp;&nbsp;• 1 majuscule (A-Z)<br>" .
+                    "&nbsp;&nbsp;• 1 minuscule (a-z)<br>" .
+                    "&nbsp;&nbsp;• 1 chiffre (0-9)<br>" .
+                    "&nbsp;&nbsp;• 1 caractère spécial (@, #, !, etc.)";
     }
 
     if (empty($errors)) {
@@ -471,28 +462,95 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
                 const communeId = $('#id_commune').val();
                 
                 if (!communeId || isNaN(communeId) || parseInt(communeId) <= 0) {
-                    alert("Veuillez sélectionner une commune valide dans la liste d'autocomplétion.");
+                    alert("⚠️ Veuillez sélectionner une commune valide dans la liste d'autocomplétion.");
                     e.preventDefault();
                     return false;
                 }
                 
                 const rueValue = $('#rue_locataire').val();
-                const rueValidated = $('#rue_validated').val();
                 
                 if (!rueValue || rueValue.trim() === '') {
-                    alert("Veuillez entrer une adresse.");
+                    alert("⚠️ Veuillez entrer une adresse (nom de rue).");
                     e.preventDefault();
                     return false;
                 }
                 
-                // More flexible validation - accept if user typed something
+                // Validation souple - accepter toute rue avec au moins 3 caractères
                 if (rueValue.length < 3) {
-                    alert("Le nom de la rue doit contenir au moins 3 caractères.");
+                    alert("⚠️ Le nom de la rue doit contenir au moins 3 caractères.");
                     e.preventDefault();
                     return false;
                 }
                 
-                console.log('Validation réussie, envoi du formulaire...');
+                // Validation réussie - le formulaire peut être soumis
+                console.log('✅ Validation réussie, envoi du formulaire...');
+                return true;
+            });
+
+            // Validation en temps réel du mot de passe
+            $('#password_locataire').on('input', function() {
+                const password = $(this).val();
+                const $strength = $('#password-strength');
+                
+                if (password.length === 0) {
+                    $strength.hide();
+                    return;
+                }
+                
+                $strength.show();
+                
+                // Vérification de chaque critère
+                const hasLength = password.length >= 8;
+                const hasUpper = /[A-Z]/.test(password);
+                const hasLower = /[a-z]/.test(password);
+                const hasDigit = /[0-9]/.test(password);
+                const hasSpecial = /[\W_]/.test(password);
+                
+                // Mise à jour des indicateurs visuels
+                updateRequirement('req-length', hasLength);
+                updateRequirement('req-upper', hasUpper);
+                updateRequirement('req-lower', hasLower);
+                updateRequirement('req-digit', hasDigit);
+                updateRequirement('req-special', hasSpecial);
+                
+                // Calcul de la force du mot de passe
+                const score = [hasLength, hasUpper, hasLower, hasDigit, hasSpecial].filter(Boolean).length;
+                const $strengthText = $('#strength-text');
+                
+                if (score === 5) {
+                    $strengthText.text('✓ Mot de passe fort').css('color', '#28a745');
+                } else if (score >= 3) {
+                    $strengthText.text('⚠ Mot de passe moyen').css('color', '#ffc107');
+                } else {
+                    $strengthText.text('✗ Mot de passe faible').css('color', '#dc3545');
+                }
+            });
+            
+            function updateRequirement(id, isValid) {
+                const $elem = $('#' + id);
+                if (isValid) {
+                    $elem.html($elem.text().replace('⚪', '✅').replace(/^\u26aa/, '✅'));
+                    $elem.css('color', '#28a745');
+                } else {
+                    $elem.html($elem.text().replace('✅', '⚪').replace(/^\u2705/, '⚪'));
+                    $elem.css('color', '#666');
+                }
+            }
+
+            // Vérification que les mots de passe correspondent
+            $('#confirm_password').on('input', function() {
+                const password = $('#password_locataire').val();
+                const confirm = $(this).val();
+                
+                if (confirm.length > 0) {
+                    if (password === confirm) {
+                        $(this).css('border-color', '#28a745');
+                    } else {
+                        $(this).css('border-color', '#dc3545');
+                    }
+                } else {
+                    $(this).css('border-color', '');
+                }
             });
         });
     </script>
@@ -503,7 +561,7 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
         <h2>Inscription</h2>
         <?php if ($message): ?>
             <div class="message <?php echo strpos($message, 'réussie') !== false ? 'success' : 'error'; ?>">
-                <?php echo htmlspecialchars($message); ?>
+                <?php echo $message; ?>
             </div>
         <?php endif; ?>
         <form method="POST" class="auth-form" id="registerForm">
@@ -562,7 +620,7 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
                 <label>Rue</label>
                 <input id="rue_locataire" type="text" class="form-control" name="rue_locataire_only" value="<?php echo htmlspecialchars($_POST['rue_locataire_only'] ?? ''); ?>" placeholder="Sélectionnez d'abord une commune..." required disabled>
                 <input type="hidden" id="rue_validated" name="rue_validated" value="<?php echo htmlspecialchars($_POST['rue_validated'] ?? '0'); ?>">
-                <small>Les rues seront chargées après sélection de la commune</small>
+                <small>💡 Utilisez l'autocomplétion pour faciliter la saisie, ou tapez le nom de la rue directement</small>
             </div>
             <div class="form-group">
                 <label>Complément d'adresse</label>
@@ -585,6 +643,18 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
             <div class="form-group">
                 <label for="password_locataire">Mot de passe</label>
                 <input id="password_locataire" type="password" class="form-control" name="password_locataire" autocomplete="new-password" required>
+                <div id="password-strength" style="margin-top:8px;display:none;">
+                    <div style="font-size:0.9em;margin-bottom:6px;">
+                        <span id="strength-text" style="font-weight:600;"></span>
+                    </div>
+                    <div style="font-size:0.85em;color:#666;">
+                        <div id="req-length" style="margin:3px 0;">⚪ Au moins 8 caractères</div>
+                        <div id="req-upper" style="margin:3px 0;">⚪ Une majuscule (A-Z)</div>
+                        <div id="req-lower" style="margin:3px 0;">⚪ Une minuscule (a-z)</div>
+                        <div id="req-digit" style="margin:3px 0;">⚪ Un chiffre (0-9)</div>
+                        <div id="req-special" style="margin:3px 0;">⚪ Un caractère spécial (@#!$%...)</div>
+                    </div>
+                </div>
             </div>
             <div class="form-group">
                 <label for="confirm_password">Confirmer le mot de passe</label>

@@ -18,7 +18,7 @@ try {
     $pdo = $pdo ?? null;
     if ($pdo) {
         // Récupération du bien avec détails
-        $bien = $pdo->prepare('SELECT b.*, c.nom_commune, t.designation_type_bien FROM Biens b LEFT JOIN Commune c ON b.id_commune = c.id_commune LEFT JOIN Type_Bien t ON b.id_type_biens = t.id_type_biens WHERE b.id_biens = ? AND (b.is_hidden IS NULL OR b.is_hidden = FALSE)');
+        $bien = $pdo->prepare('SELECT b.*, c.nom_commune, t.designation_type_bien FROM Biens b LEFT JOIN Commune c ON b.id_commune = c.id_commune LEFT JOIN Type_Bien t ON b.id_type_biens = t.id_type_biens WHERE b.id_biens = ? AND (b.is_hidden IS NULL OR b.is_hidden = FALSE) AND b.validated = 1');
         $bien->execute([$id_bien]);
         $bien = $bien->fetch(PDO::FETCH_ASSOC);
 
@@ -303,13 +303,13 @@ try {
             }
         }
 
-        // Récupérer les avis (reviews) pour ce bien
-        $reviewsStmt = $pdo->prepare('SELECT r.*, l.nom_locataire, l.prenom_locataire FROM Reviews r LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire WHERE r.id_biens = ? ORDER BY r.created_at DESC');
+        // Récupérer les avis (reviews) pour ce bien - uniquement les validés
+        $reviewsStmt = $pdo->prepare('SELECT r.*, l.nom_locataire, l.prenom_locataire FROM Reviews r LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire WHERE r.id_biens = ? AND r.validated = 1 ORDER BY r.created_at DESC');
         $reviewsStmt->execute([$id_bien]);
         $reviews = $reviewsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Calculer la note moyenne
-        $avgStmt = $pdo->prepare('SELECT AVG(rating) as avg_rating, COUNT(*) as count_reviews FROM Reviews WHERE id_biens = ?');
+        // Calculer la note moyenne - uniquement sur les avis validés
+        $avgStmt = $pdo->prepare('SELECT AVG(rating) as avg_rating, COUNT(*) as count_reviews FROM Reviews WHERE id_biens = ? AND validated = 1');
         $avgStmt->execute([$id_bien]);
         $avgRow = $avgStmt->fetch(PDO::FETCH_ASSOC);
         $averageRating = $avgRow ? round(floatval($avgRow['avg_rating']), 2) : null;

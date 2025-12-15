@@ -41,7 +41,7 @@ public function setNbCouchage($nb_couchage) {$this->nb_couchage = $nb_couchage;}
   // CREATE
     public function createBiens($nom_biens, $rue_biens, $superficie_biens, $description_biens, $animal_biens, $nb_couchage)
     {
-        $stmt = $this->pdo->prepare("INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage) VALUES (:nom, :rue, :superficie, :description, :animal, :couchage)");
+        $stmt = $this->pdo->prepare("INSERT INTO Biens (nom_biens, rue_biens, superficie_biens, description_biens, animal_biens, nb_couchage, validated) VALUES (:nom, :rue, :superficie, :description, :animal, :couchage, 0)");
         return $stmt->execute([
             'nom' => $nom_biens,
             'rue' => $rue_biens,

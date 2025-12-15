@@ -1,11 +1,13 @@
 <?php
 session_start();
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/spam_limits.php';
 require_once __DIR__ . '/../classes/Tarif/Tarif.php';
 require_once __DIR__ . '/../classes/Saison/Saison.php';
 require_once __DIR__ . '/../classes/Compose/Compose.php';
 
 $message = '';
+$spamWarning = '';
 
 // Pagination parameters
 $perPage = 9; // Maximum 9 announcements per page
@@ -15,7 +17,16 @@ $offset = ($page - 1) * $perPage;
 // Search parameters
 $searchCommune = trim($_GET['search_commune'] ?? '');
 $searchCommuneId = intval($_GET['search_commune_id'] ?? 0);
-$searchNomBien = trim($_GET['search_nom_bien'] ?? ''); // New search parameter
+$searchNomBien = trim($_GET['search_nom_bien'] ?? '');
+$searchTypeBien = intval($_GET['search_type_bien'] ?? 0);
+$searchPrixMin = floatval($_GET['search_prix_min'] ?? 0);
+$searchPrixMax = floatval($_GET['search_prix_max'] ?? 0);
+$searchCouchageMin = intval($_GET['search_couchage_min'] ?? 0);
+$searchCouchageMax = intval($_GET['search_couchage_max'] ?? 0);
+$searchSuperficieMin = intval($_GET['search_superficie_min'] ?? 0);
+$searchSuperficieMax = intval($_GET['search_superficie_max'] ?? 0);
+$searchAnimaux = isset($_GET['search_animaux']) ? intval($_GET['search_animaux']) : -1;
+$searchNote = intval($_GET['search_note'] ?? 0);
 
 // Initialize variables
 $biens = [];
@@ -53,7 +64,15 @@ try {
             // composition will be an array of items: [ ['prestation_id'=>..., 'quantite'=>...], ... ]
             $composition = $_POST['composition'] ?? [];
 
-            // Validation des champs de base
+            // Vérification anti-spam AVANT la validation des champs
+            $userId = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : $createdBy;
+            $userRole = $_SESSION['role'] ?? null;
+            $spamCheck = checkSpamLimit($pdo, $userId, $userRole);
+            
+            if (!$spamCheck['allowed']) {
+                $message = "🚫 " . $spamCheck['message'];
+            } else {
+                // Validation des champs de base
                 if ($nom && $rue && $superficie > 0 && $desc && $nb_couchage > 0 && ($id_commune || $commune_text) && $id_type && !empty($tarifs)) {
                     // Server-side verification that the address was validated via autocomplete
                     if ($rue_validated !== '1') {
@@ -168,9 +187,10 @@ try {
 
                         $message = "Annonce créée avec succès. Elle sera visible après validation par un administrateur.";
                     }
-            } else {
-                $message = "Veuillez remplir tous les champs correctement.";
-            }
+                } else {
+                    $message = "Veuillez remplir tous les champs correctement.";
+                }
+            } // Fin du bloc anti-spam check
         }
 
         // Masquage d'un bien (au lieu de suppression)
@@ -196,20 +216,89 @@ try {
             $params[] = '%' . $searchNomBien . '%';
         }
 
-        // Get total count for pagination
-        $countQuery = "SELECT COUNT(*) as total FROM Biens b LEFT JOIN Commune c ON b.id_commune = c.id_commune LEFT JOIN Type_Bien t ON b.id_type_biens = t.id_type_biens $whereClause";
-        $countStmt = $pdo->prepare($countQuery);
-        $countStmt->execute($params);
-        $totalRecords = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
-        $totalPages = ceil($totalRecords / $perPage);
+        if ($searchTypeBien > 0) {
+            $whereClause .= ' AND b.id_type_biens = ?';
+            $params[] = $searchTypeBien;
+        }
 
-        // Récupération des biens avec photos (paginated and filtered)
-        $query = "SELECT b.*, c.nom_commune, t.designation_type_bien FROM Biens b LEFT JOIN Commune c ON b.id_commune = c.id_commune LEFT JOIN Type_Bien t ON b.id_type_biens = t.id_type_biens $whereClause ORDER BY b.id_biens DESC LIMIT $perPage OFFSET $offset";
+        if ($searchCouchageMin > 0) {
+            $whereClause .= ' AND b.nb_couchage >= ?';
+            $params[] = $searchCouchageMin;
+        }
+
+        if ($searchCouchageMax > 0) {
+            $whereClause .= ' AND b.nb_couchage <= ?';
+            $params[] = $searchCouchageMax;
+        }
+
+        if ($searchSuperficieMin > 0) {
+            $whereClause .= ' AND b.superficie_biens >= ?';
+            $params[] = $searchSuperficieMin;
+        }
+
+        if ($searchSuperficieMax > 0) {
+            $whereClause .= ' AND b.superficie_biens <= ?';
+            $params[] = $searchSuperficieMax;
+        }
+
+        if ($searchAnimaux >= 0) {
+            $whereClause .= ' AND b.animal_biens = ?';
+            $params[] = $searchAnimaux;
+        }
+
+        // ÉTAPE 1: Récupérer TOUS les biens (sans pagination pour permettre le filtrage)
+        $query = "SELECT b.*, c.nom_commune, t.designation_type_bien FROM Biens b LEFT JOIN Commune c ON b.id_commune = c.id_commune LEFT JOIN Type_Bien t ON b.id_type_biens = t.id_type_biens $whereClause ORDER BY b.id_biens DESC";
         $stmt = $pdo->prepare($query);
         $stmt->execute($params);
-        $biens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $allBiens = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Photos par bien
+        // ÉTAPE 2: Récupérer les ratings pour TOUS les biens
+        $ratings = [];
+        if ($allBiens) {
+            $ids = array_column($allBiens, 'id_biens');
+            if (count($ids) > 0) {
+                $placeholders = str_repeat('?,', count($ids) - 1) . '?';
+                $stmt = $pdo->prepare("SELECT id_biens, AVG(rating) as avg_rating, COUNT(*) as count_reviews FROM Reviews WHERE id_biens IN ($placeholders) AND validated = 1 GROUP BY id_biens");
+                $stmt->execute($ids);
+                $allRatings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($allRatings as $r) {
+                    $ratings[$r['id_biens']] = $r;
+                }
+            }
+        }
+        
+        // DEBUG: Afficher les ratings pour vérification (à retirer plus tard)
+        // echo "<!-- DEBUG RATINGS: " . json_encode($ratings) . " -->";
+
+        // ÉTAPE 3: Filtrage par prix (car les prix sont dans la table Tarif)
+        if (($searchPrixMin > 0 || $searchPrixMax > 0) && $allBiens) {
+            $tarifClass = new Tarif(null, null, null, null, null, $pdo);
+            $allBiens = array_filter($allBiens, function($b) use ($tarifClass, $searchPrixMin, $searchPrixMax) {
+                $price = $tarifClass->getLatestTarifByBien($b['id_biens']);
+                if ($searchPrixMin > 0 && $price < $searchPrixMin) return false;
+                if ($searchPrixMax > 0 && $price > $searchPrixMax) return false;
+                return true;
+            });
+            $allBiens = array_values($allBiens);
+        }
+
+        // ÉTAPE 4: Filtrage par note minimale
+        if ($searchNote > 0 && $allBiens) {
+            $allBiens = array_filter($allBiens, function($b) use ($ratings, $searchNote) {
+                if (!isset($ratings[$b['id_biens']])) return false;
+                return round($ratings[$b['id_biens']]['avg_rating']) >= $searchNote;
+            });
+            $allBiens = array_values($allBiens);
+        }
+
+        // ÉTAPE 5: Calculer la pagination APRÈS les filtres
+        $totalRecords = count($allBiens);
+        $totalPages = ceil($totalRecords / $perPage);
+
+        // ÉTAPE 6: Appliquer la pagination
+        $biens = array_slice($allBiens, $offset, $perPage);
+
+        // ÉTAPE 7: Récupérer les photos et compositions pour les biens paginés
         $photos = [];
         if ($biens) {
             $ids = array_column($biens, 'id_biens');
@@ -232,19 +321,6 @@ try {
             $allComps = $stmt->fetchAll(PDO::FETCH_ASSOC);
             foreach ($allComps as $comp) {
                 $compositions[$comp['id_biens']][] = $comp;
-            }
-        }
-
-        // Ratings (Reviews) par bien
-        $ratings = [];
-        if ($biens) {
-            $ids = array_column($biens, 'id_biens');
-            $placeholders = str_repeat('?,', count($ids) - 1) . '?';
-            $stmt = $pdo->prepare("SELECT id_biens, AVG(rating) as avg_rating, COUNT(*) as count_reviews FROM Reviews WHERE id_biens IN ($placeholders) GROUP BY id_biens");
-            $stmt->execute($ids);
-            $allRatings = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($allRatings as $r) {
-                $ratings[$r['id_biens']] = $r;
             }
         }
 
@@ -302,6 +378,20 @@ if (isset($pdo) && $pdo) {
         .ui-menu-item:hover {
             background-color: #f0f0f0;
         }
+        
+        /* Cartes d'annonces */
+        .annonce-card {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+        .annonce-rating {
+            transition: all 0.3s ease;
+        }
+        .annonce-rating:hover {
+            transform: scale(1.02);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.12);
+        }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
@@ -309,6 +399,7 @@ if (isset($pdo) && $pdo) {
     <!-- Lightbox CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
     <script src="../js/autocomplete.js"></script>
+    <script src="../js/search_filters.js"></script>
     <script>
             function titleCase(str) {
                 return str.toUpperCase();
@@ -1021,6 +1112,68 @@ if (isset($pdo) && $pdo) {
             $dropZone.on('dragleave', function(e){ e.preventDefault(); $(this).css('border-color','#ccc'); });
             $dropZone.on('drop', function(e){ e.preventDefault(); $(this).css('border-color','#ccc'); const dt = e.originalEvent.dataTransfer; if (dt && dt.files && dt.files.length) { addFilesToDT(dt.files); } });
         });
+
+        // Fonction pour masquer/afficher le formulaire d'annonces
+        function toggleAnnonceForm() {
+            const formContainer = document.getElementById('annonce-form-container');
+            const toggleIcon = document.getElementById('toggle-form-icon');
+            const toggleText = document.getElementById('toggle-form-text');
+            
+            if (formContainer.style.display === 'none') {
+                formContainer.style.display = 'block';
+                toggleIcon.textContent = '▼';
+                toggleText.textContent = 'Masquer le formulaire';
+            } else {
+                formContainer.style.display = 'none';
+                toggleIcon.textContent = '▶';
+                toggleText.textContent = 'Créer une nouvelle annonce';
+            }
+        }
+
+        // Fonction pour masquer/afficher les filtres
+        function toggleFilters() {
+            const filterRows = document.querySelectorAll('.filter-row');
+            const toggleIcon = document.getElementById('toggle-icon');
+            const toggleText = document.getElementById('toggle-text');
+            
+            filterRows.forEach(row => {
+                if (row.style.display === 'none') {
+                    row.style.display = 'grid';
+                    toggleIcon.textContent = '▼';
+                    toggleText.textContent = 'Masquer les filtres';
+                } else {
+                    row.style.display = 'none';
+                    toggleIcon.textContent = '▶';
+                    toggleText.textContent = 'Afficher les filtres';
+                }
+            });
+        }
+
+        // Au chargement de la page, vérifier s'il y a des filtres actifs
+        document.addEventListener('DOMContentLoaded', function() {
+            const hasActiveFilters = <?= 
+                $searchNomBien || $searchCommuneId || $searchTypeBien || 
+                $searchPrixMin || $searchPrixMax || $searchCouchageMin || 
+                $searchCouchageMax || $searchSuperficieMin || $searchSuperficieMax || 
+                $searchAnimaux >= 0 || $searchNote 
+                ? 'true' : 'false' 
+            ?>;
+            
+            // Si aucun filtre actif, masquer les filtres par défaut
+            if (!hasActiveFilters) {
+                const filterRows = document.querySelectorAll('.filter-row');
+                filterRows.forEach(row => {
+                    row.style.display = 'none';
+                });
+                document.getElementById('toggle-icon').textContent = '▶';
+                document.getElementById('toggle-text').textContent = 'Afficher les filtres';
+            }
+
+            // Auto-complétion pour la recherche de commune dans les filtres
+            if (typeof initSearchCommuneAutocomplete === 'function') {
+                initSearchCommuneAutocomplete();
+            }
+        });
     </script>
 </head>
 <body>
@@ -1034,6 +1187,75 @@ if (isset($pdo) && $pdo) {
 
         <!-- Formulaire d'ajout d'une annonce -->
         <?php if (isset($_SESSION['user_id'])): ?>
+        <!-- Bouton toggle pour le formulaire -->
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button type="button" onclick="toggleAnnonceForm()" style="background: linear-gradient(135deg, #a100b8, #d100e8); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px rgba(161, 0, 184, 0.3); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(161, 0, 184, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(161, 0, 184, 0.3)'">
+                <span id="toggle-form-icon">▶</span>
+                <span id="toggle-form-text">Créer une nouvelle annonce</span>
+            </button>
+        </div>
+        
+        <div id="annonce-form-container" style="display: none;">
+        <?php 
+        // Afficher les statistiques de publication
+        $currentUserId = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null;
+        $currentUserRole = $_SESSION['role'] ?? null;
+        if ($currentUserId) {
+            $userStats = getUserAnnouncementStats($pdo, $currentUserId);
+            $limitCheck = checkSpamLimit($pdo, $currentUserId, $currentUserRole);
+            
+            // Afficher un panneau d'information si pas admin
+            if (!in_array($currentUserRole, EXEMPT_ROLES)):
+        ?>
+        <div style="background: linear-gradient(135deg, rgba(161, 0, 184, 0.08), rgba(209, 0, 232, 0.08)); border-left: 4px solid #a100b8; padding: 15px; margin-bottom: 20px; border-radius: 8px;">
+            <h4 style="margin: 0 0 10px 0; color: #a100b8; font-size: 1rem;">📊 Vos statistiques de publication</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 0.9rem;">
+                <div>
+                    <strong>Aujourd'hui:</strong> 
+                    <span style="color: <?= $userStats['today'] >= MAX_ANNOUNCEMENTS_PER_DAY ? '#dc3545' : '#28a745' ?>">
+                        <?= $userStats['today'] ?>/<?= MAX_ANNOUNCEMENTS_PER_DAY ?>
+                    </span>
+                </div>
+                <div>
+                    <strong>Cette semaine:</strong> 
+                    <span style="color: <?= $userStats['week'] >= MAX_ANNOUNCEMENTS_PER_WEEK ? '#dc3545' : '#28a745' ?>">
+                        <?= $userStats['week'] ?>/<?= MAX_ANNOUNCEMENTS_PER_WEEK ?>
+                    </span>
+                </div>
+                <div>
+                    <strong>Ce mois:</strong> 
+                    <span style="color: <?= $userStats['month'] >= MAX_ANNOUNCEMENTS_PER_MONTH ? '#dc3545' : '#28a745' ?>">
+                        <?= $userStats['month'] ?>/<?= MAX_ANNOUNCEMENTS_PER_MONTH ?>
+                    </span>
+                </div>
+                <div>
+                    <strong>Total:</strong> <?= $userStats['total'] ?>
+                </div>
+            </div>
+            <?php if ($userStats['last_post']): 
+                $lastPostDate = new DateTime($userStats['last_post']);
+                $now = new DateTime();
+                $interval = $now->diff($lastPostDate);
+                $minutesAgo = ($now->getTimestamp() - $lastPostDate->getTimestamp()) / 60;
+            ?>
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(161, 0, 184, 0.2); font-size: 0.85rem; color: #666;">
+                Dernière publication: il y a 
+                <?php 
+                if ($minutesAgo < 60) {
+                    echo ceil($minutesAgo) . ' minute(s)';
+                } elseif ($minutesAgo < 1440) {
+                    echo ceil($minutesAgo / 60) . ' heure(s)';
+                } else {
+                    echo ceil($minutesAgo / 1440) . ' jour(s)';
+                }
+                ?>
+            </div>
+            <?php endif; ?>
+        </div>
+        <?php 
+            endif;
+        }
+        ?>
         <div class="form-section">
             <h3>Ajouter une nouvelle annonce</h3>
             <form id="addBienForm" method="post" enctype="multipart/form-data">
@@ -1108,6 +1330,7 @@ if (isset($pdo) && $pdo) {
                 <input type="submit" name="add_bien" value="Ajouter l'annonce">
             </form>
         </div>
+        </div> <!-- Fin du conteneur formulaire -->
         <?php else: ?>
             <p>Vous devez être connecté pour ajouter une annonce. <a href="../auth/connexion.php">Se connecter</a></p>
         <?php endif; ?>
@@ -1116,25 +1339,190 @@ if (isset($pdo) && $pdo) {
             <h3>Annonces publiées</h3>
 
             <!-- Search and Filter Section -->
-            <div class="search-section">
-                <form method="get" class="search-form">
-                    <div class="search-group">
-                        <label for="search_commune_input">Rechercher par commune</label>
-                        <input type="text" id="search_commune_input" name="search_commune" value="<?= htmlspecialchars($searchCommune) ?>" placeholder="Tapez le nom d'une commune...">
-                        <input type="hidden" id="search_commune_id" name="search_commune_id" value="<?= $searchCommuneId ?>">
-                        <button type="submit" class="search-btn">Rechercher</button>
-                        <?php if ($searchCommuneId > 0): ?>
-                            <a href="Annonce.form.php" class="clear-search">Effacer la recherche</a>
-                        <?php endif; ?>
+            <div class="search-section-advanced">
+                <h3 style="text-align:center;color:#a100b8;margin-bottom:24px;font-size:1.5em;">🔍 Recherche Avancée</h3>
+                <form method="get" class="advanced-search-form">
+                    <!-- Ligne 1: Nom et Commune -->
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="search_nom_bien">Nom du bien</label>
+                            <input type="text" id="search_nom_bien" name="search_nom_bien" value="<?= htmlspecialchars($searchNomBien) ?>" placeholder="Ex: Villa Paradis...">
+                        </div>
+                        <div class="filter-group">
+                            <label for="search_commune_input">Commune</label>
+                            <input type="text" id="search_commune_input" name="search_commune" value="<?= htmlspecialchars($searchCommune) ?>" placeholder="Ex: Paris, Lyon...">
+                            <input type="hidden" id="search_commune_id" name="search_commune_id" value="<?= $searchCommuneId ?>">
+                        </div>
+                        <div class="filter-group">
+                            <label for="search_type_bien">Type de bien</label>
+                            <select id="search_type_bien" name="search_type_bien">
+                                <option value="">Tous les types</option>
+                                <?php foreach ($types as $type): ?>
+                                    <option value="<?= $type['id_type_biens'] ?>" <?= ($searchTypeBien == $type['id_type_biens']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($type['designation_type_bien']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Ligne 2: Prix et Couchages -->
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="search_prix_min">Prix min (€/sem)</label>
+                            <input type="number" id="search_prix_min" name="search_prix_min" value="<?= $searchPrixMin > 0 ? $searchPrixMin : '' ?>" placeholder="Ex: 100" min="0" step="10">
+                        </div>
+                        <div class="filter-group">
+                            <label for="search_prix_max">Prix max (€/sem)</label>
+                            <input type="number" id="search_prix_max" name="search_prix_max" value="<?= $searchPrixMax > 0 ? $searchPrixMax : '' ?>" placeholder="Ex: 500" min="0" step="10">
+                        </div>
+                        <div class="filter-group">
+                            <label for="search_couchage_min">Couchages min</label>
+                            <input type="number" id="search_couchage_min" name="search_couchage_min" value="<?= $searchCouchageMin > 0 ? $searchCouchageMin : '' ?>" placeholder="Ex: 2" min="0">
+                        </div>
+                        <div class="filter-group">
+                            <label for="search_couchage_max">Couchages max</label>
+                            <input type="number" id="search_couchage_max" name="search_couchage_max" value="<?= $searchCouchageMax > 0 ? $searchCouchageMax : '' ?>" placeholder="Ex: 6" min="0">
+                        </div>
+                    </div>
+
+                    <!-- Ligne 3: Superficie, Animaux et Note -->
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="search_superficie_min">Superficie min (m²)</label>
+                            <input type="number" id="search_superficie_min" name="search_superficie_min" value="<?= $searchSuperficieMin > 0 ? $searchSuperficieMin : '' ?>" placeholder="Ex: 50" min="0">
+                        </div>
+                        <div class="filter-group">
+                            <label for="search_superficie_max">Superficie max (m²)</label>
+                            <input type="number" id="search_superficie_max" name="search_superficie_max" value="<?= $searchSuperficieMax > 0 ? $searchSuperficieMax : '' ?>" placeholder="Ex: 200" min="0">
+                        </div>
+                        <div class="filter-group">
+                            <label for="search_animaux">Animaux acceptés</label>
+                            <select id="search_animaux" name="search_animaux">
+                                <option value="-1" <?= $searchAnimaux == -1 ? 'selected' : '' ?>>Peu importe</option>
+                                <option value="1" <?= $searchAnimaux == 1 ? 'selected' : '' ?>>Oui</option>
+                                <option value="0" <?= $searchAnimaux == 0 ? 'selected' : '' ?>>Non</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="search_note">Note minimum</label>
+                            <select id="search_note" name="search_note">
+                                <option value="0">Toutes les notes</option>
+                                <?php for($i=5; $i>=1; $i--): ?>
+                                    <option value="<?= $i ?>" <?= ($searchNote == $i) ? 'selected' : '' ?>><?= str_repeat('★', $i) ?> et plus</option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Boutons -->
+                    <div class="filter-actions">
+                        <button type="submit" class="search-btn-advanced">
+                            <span>🔍</span> Rechercher
+                        </button>
+                        <a href="Annonce.form.php" class="clear-search-btn">
+                            <span>🔄</span> Réinitialiser
+                        </a>
+                        <button type="button" class="toggle-filters-btn" onclick="toggleFilters()">
+                            <span id="toggle-icon">▼</span> <span id="toggle-text">Masquer les filtres</span>
+                        </button>
                     </div>
                 </form>
+                
+                <!-- Résumé des filtres actifs -->
+                <?php 
+                $activeFiltersCount = 0;
+                $activeFiltersSummary = [];
+                
+                if ($searchNomBien) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Nom: " . htmlspecialchars($searchNomBien);
+                }
+                if ($searchCommuneId > 0) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Commune: " . htmlspecialchars($searchCommune);
+                }
+                if ($searchTypeBien > 0) {
+                    $activeFiltersCount++;
+                    foreach ($types as $type) {
+                        if ($type['id_type_biens'] == $searchTypeBien) {
+                            $activeFiltersSummary[] = "Type: " . htmlspecialchars($type['designation_type_bien']);
+                            break;
+                        }
+                    }
+                }
+                if ($searchPrixMin > 0) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Prix min: " . number_format($searchPrixMin, 0) . "€";
+                }
+                if ($searchPrixMax > 0) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Prix max: " . number_format($searchPrixMax, 0) . "€";
+                }
+                if ($searchCouchageMin > 0) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Couchages min: " . $searchCouchageMin;
+                }
+                if ($searchCouchageMax > 0) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Couchages max: " . $searchCouchageMax;
+                }
+                if ($searchSuperficieMin > 0) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Superficie min: " . $searchSuperficieMin . "m²";
+                }
+                if ($searchSuperficieMax > 0) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Superficie max: " . $searchSuperficieMax . "m²";
+                }
+                if ($searchAnimaux == 1) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Animaux: Acceptés";
+                } elseif ($searchAnimaux == 0) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Animaux: Non acceptés";
+                }
+                if ($searchNote > 0) {
+                    $activeFiltersCount++;
+                    $activeFiltersSummary[] = "Note: " . str_repeat('★', $searchNote) . "+";
+                }
+                ?>
+                
+                <?php if ($activeFiltersCount > 0): ?>
+                    <div class="active-filters-summary">
+                        <div class="filters-summary-header">
+                            <span class="filters-count-badge"><?= $activeFiltersCount ?></span>
+                            <strong>Filtres actifs:</strong>
+                        </div>
+                        <div class="filters-tags">
+                            <?php foreach ($activeFiltersSummary as $filter): ?>
+                                <span class="filter-tag"><?= $filter ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
 
-            <!-- New search by name form -->
-            <form method="get" style="margin-bottom:18px;display:flex;gap:12px;align-items:center;">
-                <input type="text" name="search_nom_bien" placeholder="Rechercher un bien par nom..." value="<?= htmlspecialchars($searchNomBien) ?>" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;">
-                <button type="submit" style="padding:8px 18px;border-radius:6px;background:#a100b8;color:#fff;border:none;">Filtrer</button>
-            </form>
+            <!-- Informations sur les résultats -->
+            <div class="results-info">
+                <?php 
+                $totalBiens = count($biens);
+                if ($activeFiltersCount > 0): 
+                ?>
+                    <p class="results-count">
+                        <span class="results-number"><?= $totalBiens ?></span> 
+                        <?= $totalBiens > 1 ? 'résultats trouvés' : 'résultat trouvé' ?>
+                        <?php if ($totalRecords > $perPage): ?>
+                            sur <strong><?= $totalRecords ?></strong> au total
+                        <?php endif; ?>
+                    </p>
+                <?php else: ?>
+                    <p class="results-count">
+                        <span class="results-number"><?= $totalRecords ?></span> 
+                        <?= $totalRecords > 1 ? 'annonces disponibles' : 'annonce disponible' ?>
+                    </p>
+                <?php endif; ?>
+            </div>
 
             <?php if ($biens): ?>
                 <div class="annonces-grid">
@@ -1161,13 +1549,20 @@ if (isset($pdo) && $pdo) {
                                     $price = $tarifClass->getLatestTarifByBien($b['id_biens']);
                                     ?>
                                     €<?= number_format($price, 2) ?>/semaine
-                                    <?php if (!empty($ratings[$b['id_biens']])): $r = $ratings[$b['id_biens']]; ?>
-                                        <div style="font-size:0.9em;color:#f39c12;margin-top:6px;">
-                                            <?= str_repeat('★', round($r['avg_rating'])) . str_repeat('☆', 5 - round($r['avg_rating'])) ?>
-                                            <span style="color:#666;font-size:0.85em;">(<?= intval($r['count_reviews']) ?>)</span>
-                                        </div>
-                                    <?php endif; ?>
                                 </div>
+                                
+                                <?php 
+                                // DEBUG: Afficher ce qui se passe avec les ratings
+                                $debugRating = isset($ratings[$b['id_biens']]) ? 'OUI - ' . json_encode($ratings[$b['id_biens']]) : 'NON';
+                                ?>
+                                <!-- DEBUG: Rating pour bien #<?= $b['id_biens'] ?>: <?= $debugRating ?> -->
+                                
+                                <?php if (!empty($ratings[$b['id_biens']])): $r = $ratings[$b['id_biens']]; ?>
+                                    <div class="annonce-rating" style="text-align: center; padding: 8px 12px; background: linear-gradient(135deg, #fff9e6, #ffffff); border-radius: 8px; margin: 8px 12px; font-size: 0.95em; color: #f39c12; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.08); border: 1px solid #ffe5b4;">
+                                        <?= str_repeat('★', round($r['avg_rating'])) . str_repeat('☆', 5 - round($r['avg_rating'])) ?>
+                                        <span style="color:#666;font-size:0.85em;margin-left:6px;">(<?= intval($r['count_reviews']) ?> avis)</span>
+                                    </div>
+                                <?php endif; ?>
                                 <div class="annonce-content">
                                     <h4 class="annonce-title"><?= htmlspecialchars($b['nom_biens']) ?></h4>
                                     <p class="annonce-location"><?= htmlspecialchars($b['nom_commune']) ?>, <?= htmlspecialchars($b['rue_biens']) ?></p>

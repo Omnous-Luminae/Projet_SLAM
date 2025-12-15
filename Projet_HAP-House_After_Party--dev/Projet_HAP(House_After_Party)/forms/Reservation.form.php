@@ -178,16 +178,88 @@ try {
     <script src="../js/autocomplete.js"></script>
     <style>
         .reservation-form {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
+            background: linear-gradient(135deg, rgba(161, 0, 184, 0.05), rgba(209, 0, 232, 0.05));
+            padding: 30px;
+            border-radius: 16px;
             margin-bottom: 30px;
-            justify-content: center;
-            align-items: end;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         }
-        .reservation-form input,
-        .reservation-form select {
-            min-width: 200px;
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .form-group label .required {
+            color: #e74c3c;
+            font-size: 1.2em;
+        }
+        .form-group input,
+        .form-group select {
+            padding: 12px 16px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #a100b8;
+            box-shadow: 0 0 0 3px rgba(161, 0, 184, 0.1);
+        }
+        .form-group input[readonly] {
+            background: #f5f5f5;
+            cursor: not-allowed;
+        }
+        .submit-btn {
+            grid-column: 1 / -1;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #a100b8, #d100e8);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(161, 0, 184, 0.3);
+        }
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(161, 0, 184, 0.4);
+        }
+        .form-title {
+            margin: 0 0 20px 0;
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #a100b8;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .info-text {
+            background: #e8f4f8;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #2c3e50;
         }
         .reservation-list {
             margin-top: 40px;
@@ -225,6 +297,32 @@ try {
             gap: 8px;
             flex-wrap: wrap;
         }
+        .reservation-list .actions button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .reservation-list .actions button[type="button"] {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+        .reservation-list .actions button[type="button"]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        .reservation-list .actions button[type="submit"] {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+        .reservation-list .actions button[type="submit"]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
         .modal {
             display: none;
             position: fixed;
@@ -236,17 +334,20 @@ try {
             overflow: auto;
             background-color: rgba(0,0,0,0.6);
             backdrop-filter: blur(5px);
+            padding: 20px;
         }
         .modal-content {
             background-color: #fefefe;
-            margin: 10% auto;
-            padding: 30px;
+            margin: 5% auto;
+            padding: 35px;
             border: none;
             width: 90%;
-            max-width: 600px;
-            border-radius: 16px;
+            max-width: 700px;
+            border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             animation: modalSlideIn 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         @keyframes modalSlideIn {
             from { transform: translateY(-50px); opacity: 0; }
@@ -287,27 +388,60 @@ try {
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
-        .filter-form {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 30px;
-            align-items: end;
-            justify-content: center;
+        .filter-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e1e1e1;
         }
-        .filter-form input,
-        .filter-form select,
-        .filter-form button {
-            min-width: 150px;
+        .filter-section h3 {
+            margin: 0 0 20px 0;
+            font-size: 1.1em;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+        .filter-grid input,
+        .filter-grid select {
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+        .filter-grid button {
+            padding: 10px 24px;
+            background: #a100b8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .filter-grid button:hover {
+            background: #8a0099;
+            transform: translateY(-1px);
         }
     </style>
     <script>
-        function openEditModal(id, dateDebut, dateFin, idLocataire, idBiens) {
+        function openEditModal(id, dateDebut, dateFin, idLocataire, idBiens, nomBien) {
             document.getElementById('edit_id_reservation').value = id;
             document.getElementById('edit_date_debut').value = dateDebut;
             document.getElementById('edit_date_fin').value = dateFin;
-            document.getElementById('edit_id_locataire').value = idLocataire;
-            document.getElementById('edit_id_biens').value = idBiens;
+            if (document.getElementById('edit_id_locataire')) {
+                document.getElementById('edit_id_locataire').value = idLocataire;
+            }
+            document.getElementById('edit_biens_id').value = idBiens;
+            document.getElementById('edit_biens_input').value = nomBien || '';
             document.getElementById('editModal').style.display = 'block';
         }
 
@@ -356,35 +490,69 @@ try {
             <div style="color: red; text-align: center; margin-bottom: 18px;">Vous devez être connecté pour effectuer une réservation.</div>
         <?php endif; ?>
         <?php if ($canReserve): ?>
-        <form method="post" class="reservation-form">
-            <input type="date" name="date_debut" placeholder="Date début" required>
-            <input type="date" name="date_fin" placeholder="Date fin" required>
-            <?php
-                // Single locataire input (keeps IDs stable for JS). If user is logged and not admin, prefill and make readonly.
-                $locataireValue = '';
-                $locataireReadonly = '';
-                $locataireHiddenVal = '';
-                if (!$isAdmin && $currentUserId) {
-                    $locataireValue = htmlspecialchars($_SESSION['user_name'] ?? '');
-                    $locataireReadonly = 'readonly';
-                    $locataireHiddenVal = $currentUserId;
-                }
-            ?>
-            <input type="text" id="locataire_input" name="locataire_name" placeholder="Rechercher un locataire..." <?= $locataireReadonly ?> value="<?= $locataireValue ?>">
-            <input type="hidden" id="locataire_id" name="id_locataire" value="<?= $locataireHiddenVal ?>">
-
-            <input type="text" id="biens_input" name="biens_name" placeholder="Rechercher un bien..." required>
-            <input type="hidden" id="biens_id" name="id_biens">
-            <input type="submit" name="add_reservation" value="Ajouter">
-        </form>
+        <div class="reservation-form">
+            <h3 class="form-title">📅 Nouvelle Réservation</h3>
+            <?php if (!$isAdmin && $currentUserId): ?>
+            <div class="info-text">
+                💡 Vous réservez en tant que <strong><?= htmlspecialchars($_SESSION['user_name'] ?? 'utilisateur') ?></strong>
+            </div>
+            <?php endif; ?>
+            <form method="post" id="add_reservation_form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="date_debut">Date de début <span class="required">*</span></label>
+                        <input type="date" id="date_debut" name="date_debut" required min="<?= date('Y-m-d') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="date_fin">Date de fin <span class="required">*</span></label>
+                        <input type="date" id="date_fin" name="date_fin" required min="<?= date('Y-m-d') ?>">
+                    </div>
+                    <?php
+                        // Single locataire input (keeps IDs stable for JS). If user is logged and not admin, prefill and make readonly.
+                        $locataireValue = '';
+                        $locataireReadonly = '';
+                        $locataireHiddenVal = '';
+                        if (!$isAdmin && $currentUserId) {
+                            $locataireValue = htmlspecialchars($_SESSION['user_name'] ?? '');
+                            $locataireReadonly = 'readonly';
+                            $locataireHiddenVal = $currentUserId;
+                        }
+                    ?>
+                    <?php if ($isAdmin): ?>
+                    <div class="form-group">
+                        <label for="locataire_input">Locataire <span class="required">*</span></label>
+                        <input type="text" id="locataire_input" name="locataire_name" placeholder="Tapez pour rechercher..." required>
+                        <input type="hidden" id="locataire_id" name="id_locataire">
+                    </div>
+                    <?php else: ?>
+                    <div class="form-group">
+                        <label for="locataire_input">Locataire</label>
+                        <input type="text" id="locataire_input" name="locataire_name" value="<?= $locataireValue ?>" <?= $locataireReadonly ?>>
+                        <input type="hidden" id="locataire_id" name="id_locataire" value="<?= $locataireHiddenVal ?>">
+                    </div>
+                    <?php endif; ?>
+                    <div class="form-group">
+                        <label for="biens_input">Bien à réserver <span class="required">*</span></label>
+                        <input type="text" id="biens_input" name="biens_name" placeholder="Tapez pour rechercher..." required>
+                        <input type="hidden" id="biens_id" name="id_biens">
+                    </div>
+                </div>
+                <button type="submit" name="add_reservation" class="submit-btn">✓ Créer la réservation</button>
+            </form>
+        </div>
         <?php endif; ?>
-        <form method="get" style="margin-bottom:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-            <input type="text" name="filter_bien" placeholder="Filtrer par nom de bien..." value="<?= htmlspecialchars($filterBien) ?>" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;">
-            <input type="date" name="filter_start_date" placeholder="Date début" value="<?= htmlspecialchars($filterStartDate) ?>" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;">
-            <input type="date" name="filter_end_date" placeholder="Date fin" value="<?= htmlspecialchars($filterEndDate) ?>" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;">
-            <input type="number" name="filter_min_reservations" placeholder="Min réservations" min="0" value="<?= htmlspecialchars($filterMinReservations) ?>" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;width:120px;">
-            <button type="submit" style="padding:8px 18px;border-radius:6px;background:#a100b8;color:#fff;border:none;">Filtrer</button>
-        </form>
+        <div class="filter-section">
+            <h3>🔍 Filtrer les réservations</h3>
+            <form method="get">
+                <div class="filter-grid">
+                    <input type="text" name="filter_bien" placeholder="Nom du bien..." value="<?= htmlspecialchars($filterBien) ?>">
+                    <input type="date" name="filter_start_date" placeholder="Date début" value="<?= htmlspecialchars($filterStartDate) ?>">
+                    <input type="date" name="filter_end_date" placeholder="Date fin" value="<?= htmlspecialchars($filterEndDate) ?>">
+                    <input type="number" name="filter_min_reservations" placeholder="Min réservations" min="0" value="<?= htmlspecialchars($filterMinReservations) ?>">
+                    <button type="submit">🔍 Filtrer</button>
+                </div>
+            </form>
+        </div>
         <div class="reservation-list">
             <table>
                 <tr>
@@ -405,10 +573,10 @@ try {
                         <td><?= htmlspecialchars($r['nom_biens']) ?></td>
                         <td><?= htmlspecialchars(number_format($r['total_cost'], 2)) ?> €</td>
                         <td>
-                            <button type="button" onclick="openEditModal(<?= $r['id_reservation'] ?>, '<?= htmlspecialchars($r['date_debut_reservation']) ?>', '<?= htmlspecialchars($r['date_fin_reservation']) ?>', <?= $r['id_locataire'] ?>, <?= $r['id_biens'] ?>)">Modifier</button>
-                            <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer cette réservation ?');">
+                            <button type="button" onclick="openEditModal(<?= $r['id_reservation'] ?>, '<?= htmlspecialchars($r['date_debut_reservation']) ?>', '<?= htmlspecialchars($r['date_fin_reservation']) ?>', <?= $r['id_locataire'] ?>, <?= $r['id_biens'] ?>, '<?= htmlspecialchars($r['nom_biens'], ENT_QUOTES) ?>')">✏️ Modifier</button>
+                            <form method="post" style="display:inline;" onsubmit="return confirm('⚠️ Êtes-vous sûr de vouloir supprimer cette réservation ?');">
                                 <input type="hidden" name="id_reservation" value="<?= htmlspecialchars($r['id_reservation']) ?>">
-                                <button type="submit" name="delete_reservation">Supprimer</button>
+                                <button type="submit" name="delete_reservation">🗑️ Supprimer</button>
                             </form>
                         </td>
                     </tr>
@@ -420,20 +588,36 @@ try {
         <div id="editModal" class="modal">
             <div class="modal-content">
                 <button class="close" type="button" aria-label="Fermer" onclick="closeModal()">&times;</button>
-                <h3>Modifier la Réservation</h3>
+                <h3 class="form-title">✏️ Modifier la Réservation</h3>
                 <form method="post">
                     <input type="hidden" id="edit_id_reservation" name="id_reservation">
-                    <input type="date" id="edit_date_debut" name="date_debut_edit" required><br><br>
-                    <input type="date" id="edit_date_fin" name="date_fin_edit" required><br><br>
-                    <select id="edit_id_locataire" name="id_locataire_edit" required>
-                        <option value="">-- Locataire --</option>
-                        <?php foreach ($locataires as $l): ?>
-                            <option value="<?= $l['id_locataire'] ?>"><?= htmlspecialchars($l['nom_locataire'] . ' ' . $l['prenom_locataire']) ?></option>
-                        <?php endforeach; ?>
-                    </select><br><br>
-                    <input type="text" id="edit_biens_input" name="edit_biens_name" placeholder="Rechercher un bien..." required><br><br>
-                    <input type="hidden" id="edit_biens_id" name="id_biens_edit">
-                    <input type="submit" name="edit_reservation" value="Modifier">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="edit_date_debut">Date de début <span class="required">*</span></label>
+                            <input type="date" id="edit_date_debut" name="date_debut_edit" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_date_fin">Date de fin <span class="required">*</span></label>
+                            <input type="date" id="edit_date_fin" name="date_fin_edit" required>
+                        </div>
+                        <?php if ($isAdmin): ?>
+                        <div class="form-group">
+                            <label for="edit_id_locataire">Locataire <span class="required">*</span></label>
+                            <select id="edit_id_locataire" name="id_locataire_edit" required>
+                                <option value="">-- Sélectionner --</option>
+                                <?php foreach ($locataires as $l): ?>
+                                    <option value="<?= $l['id_locataire'] ?>"><?= htmlspecialchars($l['nom_locataire'] . ' ' . $l['prenom_locataire']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <?php endif; ?>
+                        <div class="form-group">
+                            <label for="edit_biens_input">Bien <span class="required">*</span></label>
+                            <input type="text" id="edit_biens_input" name="edit_biens_name" placeholder="Tapez pour rechercher..." required>
+                            <input type="hidden" id="edit_biens_id" name="id_biens_edit">
+                        </div>
+                    </div>
+                    <button type="submit" name="edit_reservation" class="submit-btn">✓ Enregistrer les modifications</button>
                 </form>
             </div>
         </div>

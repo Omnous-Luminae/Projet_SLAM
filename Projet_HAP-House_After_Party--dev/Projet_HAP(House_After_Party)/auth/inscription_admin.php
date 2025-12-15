@@ -60,7 +60,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_animateur'])
         && preg_match('/[0-9]/', $password_animateur)
         && preg_match('/[\W_]/', $password_animateur);
     if (!$pw_ok) {
-        $errors[] = "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.";
+        $errors[] = "❌ Mot de passe trop faible. Il doit contenir au minimum :<br>" .
+                    "&nbsp;&nbsp;• 8 caractères<br>" .
+                    "&nbsp;&nbsp;• 1 majuscule (A-Z)<br>" .
+                    "&nbsp;&nbsp;• 1 minuscule (a-z)<br>" .
+                    "&nbsp;&nbsp;• 1 chiffre (0-9)<br>" .
+                    "&nbsp;&nbsp;• 1 caractère spécial (@, #, !, etc.)";
     }
 
     // Vérifier si l'email est déjà utilisé
@@ -96,6 +101,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_animateur'])
     <meta charset="UTF-8">
     <title>Inscription Administrateur</title>
     <link rel="stylesheet" href="../Css/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Validation en temps réel du mot de passe
+            $('#password_animateur').on('input', function() {
+                const password = $(this).val();
+                const $strength = $('#password-strength');
+                
+                if (password.length === 0) {
+                    $strength.hide();
+                    return;
+                }
+                
+                $strength.show();
+                
+                // Vérification de chaque critère
+                const hasLength = password.length >= 8;
+                const hasUpper = /[A-Z]/.test(password);
+                const hasLower = /[a-z]/.test(password);
+                const hasDigit = /[0-9]/.test(password);
+                const hasSpecial = /[\W_]/.test(password);
+                
+                // Mise à jour des indicateurs visuels
+                updateRequirement('req-length', hasLength);
+                updateRequirement('req-upper', hasUpper);
+                updateRequirement('req-lower', hasLower);
+                updateRequirement('req-digit', hasDigit);
+                updateRequirement('req-special', hasSpecial);
+                
+                // Calcul de la force du mot de passe
+                const score = [hasLength, hasUpper, hasLower, hasDigit, hasSpecial].filter(Boolean).length;
+                const $strengthText = $('#strength-text');
+                
+                if (score === 5) {
+                    $strengthText.text('✓ Mot de passe fort').css('color', '#28a745');
+                } else if (score >= 3) {
+                    $strengthText.text('⚠ Mot de passe moyen').css('color', '#ffc107');
+                } else {
+                    $strengthText.text('✗ Mot de passe faible').css('color', '#dc3545');
+                }
+            });
+            
+            function updateRequirement(id, isValid) {
+                const $elem = $('#' + id);
+                if (isValid) {
+                    $elem.html($elem.text().replace('⚪', '✅').replace(/^\u26aa/, '✅'));
+                    $elem.css('color', '#28a745');
+                } else {
+                    $elem.html($elem.text().replace('✅', '⚪').replace(/^\u2705/, '⚪'));
+                    $elem.css('color', '#666');
+                }
+            }
+
+            // Vérification que les mots de passe correspondent
+            $('#confirm_password').on('input', function() {
+                const password = $('#password_animateur').val();
+                const confirm = $(this).val();
+                
+                if (confirm.length > 0) {
+                    if (password === confirm) {
+                        $(this).css('border-color', '#28a745');
+                    } else {
+                        $(this).css('border-color', '#dc3545');
+                    }
+                } else {
+                    $(this).css('border-color', '');
+                }
+            });
+        });
+    </script>
 </head>
 <body>
     <div class="auth-container">
@@ -103,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_animateur'])
         <h2>Inscription Administrateur</h2>
         <?php if ($message): ?>
             <div class="message <?php echo strpos($message, 'réussie') !== false ? 'success' : 'error'; ?>">
-                <?php echo htmlspecialchars($message); ?>
+                <?php echo $message; ?>
             </div>
         <?php endif; ?>
         <form method="POST" class="auth-form">
@@ -130,11 +205,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_animateur'])
             </div>
             <div class="form-group">
                 <label>Mot de passe</label>
-                <input type="password" class="form-control" name="password_animateur" required>
+                <input id="password_animateur" type="password" class="form-control" name="password_animateur" autocomplete="new-password" required>
+                <div id="password-strength" style="margin-top:8px;display:none;">
+                    <div style="font-size:0.9em;margin-bottom:6px;">
+                        <span id="strength-text" style="font-weight:600;"></span>
+                    </div>
+                    <div style="font-size:0.85em;color:#666;">
+                        <div id="req-length" style="margin:3px 0;">⚪ Au moins 8 caractères</div>
+                        <div id="req-upper" style="margin:3px 0;">⚪ Une majuscule (A-Z)</div>
+                        <div id="req-lower" style="margin:3px 0;">⚪ Une minuscule (a-z)</div>
+                        <div id="req-digit" style="margin:3px 0;">⚪ Un chiffre (0-9)</div>
+                        <div id="req-special" style="margin:3px 0;">⚪ Un caractère spécial (@#!$%...)</div>
+                    </div>
+                </div>
             </div>
             <div class="form-group">
                 <label>Confirmer le mot de passe</label>
-                <input type="password" class="form-control" name="confirm_password" required>
+                <input id="confirm_password" type="password" class="form-control" name="confirm_password" autocomplete="new-password" required>
             </div>
             <button type="submit" name="register_animateur" class="btn btn-primary">S'inscrire</button>
         </form>
