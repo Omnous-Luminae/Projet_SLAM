@@ -119,7 +119,7 @@ try {
                     Connecté en tant que <strong><?= htmlspecialchars($_SESSION['user_name']) ?></strong>
                 </div>
                 <div class="form-group">
-                    <label for="bien_input">Bien (autocomplete)</label>
+                    <label for="bien_input">Bien</label>
                     <input type="text" id="bien_input" name="bien_label" placeholder="Tapez le nom du bien..." required>
                     <input type="hidden" id="bien_id" name="bien_id">
                 </div>

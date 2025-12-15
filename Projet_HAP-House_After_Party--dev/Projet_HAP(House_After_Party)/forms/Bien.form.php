@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/spam_limits.php';
 require_once __DIR__ . '/../classes/Biens/Biens.php';
 require_once __DIR__ . '/../classes/Compose/Compose.php';
 require_once __DIR__ . '/../classes/Tarif/Tarif.php';
@@ -7,6 +8,7 @@ require_once __DIR__ . '/../classes/Prestation/Prestation.php';
 require_once __DIR__ . '/../classes/Saison/Saison.php';
 
 $bienMessage = '';
+$spamWarning = '';
 $bien = [];
 try {
     $pdo = $pdo ?? null;
@@ -15,10 +17,19 @@ try {
 
     // Ajout d'un bien
         if (isset($_POST['add_biens'])) {
-            $nom_biens = trim($_POST['nom_biens'] ?? '');
-            if ($nom_biens !== '') {
+            // Vérification anti-spam
+            session_start();
+            $userId = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 'guest_' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+            $userRole = $_SESSION['role'] ?? null;
+            $spamCheck = checkSpamLimit($pdo, $userId, $userRole);
+            
+            if (!$spamCheck['allowed']) {
+                $bienMessage = "🚫 " . $spamCheck['message'];
+            } else {
+                $nom_biens = trim($_POST['nom_biens'] ?? '');
+                if ($nom_biens !== '') {
                 if ($bienObj->createBiens($nom_biens, null, null, null, null, null)) {
-                    $bienMessage = "Bien ajouté avec succès.";
+                    $bienMessage = "Bien ajouté avec succès. En attente de validation par l'administrateur.";
                     // Récupérer l'id du bien ajouté
                     $id_biens = $pdo->lastInsertId();
                     // Traitement des photos
@@ -39,6 +50,7 @@ try {
                     $bienMessage = "Erreur lors de l'ajout.";
                 }
             }
+            } // Fin du bloc anti-spam check
         }
 
         // Gestion de la composition (liaison Prestation <-> Bien)

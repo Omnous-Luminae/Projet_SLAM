@@ -162,6 +162,310 @@ try {
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <!-- CSS personnalisé -->
     <link rel="stylesheet" href="../Css/forms.css">
+    <link rel="stylesheet" href="../Css/locataires.css">
+    <style>
+        .form-section {
+            background: linear-gradient(135deg, rgba(161, 0, 184, 0.05), rgba(209, 0, 232, 0.05));
+            padding: 35px;
+            border-radius: 16px;
+            margin-bottom: 35px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(161, 0, 184, 0.1);
+        }
+        .form-section h3 {
+            margin: 0 0 25px 0;
+            font-size: 1.4em;
+            color: #a100b8;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: #444;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .form-group input,
+        .form-group select {
+            padding: 12px 16px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            background: white;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #a100b8;
+            box-shadow: 0 0 0 3px rgba(161, 0, 184, 0.1);
+        }
+        .btn {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #a100b8, #d100e8);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(161, 0, 184, 0.3);
+            width: 100%;
+            max-width: 300px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(161, 0, 184, 0.4);
+        }
+        .table-section {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+        }
+        .table-section h3 {
+            margin: 0 0 25px 0;
+            font-size: 1.3em;
+            color: #333;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .search-section {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .search-section input {
+            flex: 1;
+            min-width: 250px;
+            padding: 10px 16px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 0.95em;
+        }
+        .search-section input:focus {
+            outline: none;
+            border-color: #a100b8;
+        }
+        .search-section button {
+            padding: 10px 24px;
+            background: #a100b8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .search-section button:hover {
+            background: #8a0099;
+            transform: translateY(-1px);
+        }
+        .search-section a {
+            padding: 10px 24px;
+            background: #e0e0e0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .search-section a:hover {
+            background: #ccc;
+        }
+        .locataire-list table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .locataire-list th {
+            background: linear-gradient(135deg, #a100b8, #d100e8);
+            color: white;
+            padding: 16px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .locataire-list td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.9em;
+        }
+        .locataire-list tr:hover {
+            background: rgba(161, 0, 184, 0.02);
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn-edit,
+        .btn-delete {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+        }
+        .btn-edit {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+        .btn-edit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        .btn-delete {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+        .btn-delete:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            max-width: 800px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+            overflow: hidden;
+        }
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #a100b8, #d100e8);
+            color: white;
+            padding: 25px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.4em;
+            font-weight: 700;
+        }
+        .modal-header .close {
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            background: none;
+            border: none;
+        }
+        .modal-header .close:hover {
+            transform: rotate(90deg);
+        }
+        .modal-body {
+            padding: 30px;
+        }
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+        .modal-footer .btn-secondary {
+            background: #6c757d;
+        }
+        .modal-footer .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .modal-footer .btn-primary {
+            background: linear-gradient(135deg, #a100b8, #d100e8);
+        }
+        .morale-fields {
+            display: none;
+        }
+        .message {
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .message.success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        .message.success::before {
+            content: '✓';
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(161, 0, 184, 0.1);
+            color: #a100b8;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            background: rgba(161, 0, 184, 0.2);
+            transform: translateX(-5px);
+        }
+    </style>
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
@@ -315,11 +619,11 @@ try {
         <div class="table-section">
             <h3>📋 Liste des locataires</h3>
             <!-- Search Form -->
-            <form method="get" style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
-                <input type="text" name="search_locataire" placeholder="Rechercher par nom, prénom ou email..." value="<?= htmlspecialchars($search) ?>" style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; flex: 1;">
-                <button type="submit" style="padding: 8px 16px; background: #a100b8; color: #fff; border: none; border-radius: 6px; cursor: pointer;">Filtrer</button>
+            <form method="get" class="search-section">
+                <input type="text" name="search_locataire" placeholder="🔍 Rechercher par nom, prénom ou email..." value="<?= htmlspecialchars($search) ?>">
+                <button type="submit">Filtrer</button>
                 <?php if ($search): ?>
-                    <a href="Locataires.form.php" style="padding: 8px 16px; background: #ccc; color: #000; text-decoration: none; border-radius: 6px;">Effacer</a>
+                    <a href="Locataires.form.php">✖ Effacer</a>
                 <?php endif; ?>
             </form>
             <div class="locataire-list">
