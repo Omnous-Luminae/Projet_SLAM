@@ -205,6 +205,24 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
     <script src="../js/autocomplete.js"></script>
+    <style>
+        /* Force jQuery UI autocomplete to be visible */
+        .ui-autocomplete {
+            z-index: 9999 !important;
+            max-height: 300px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: white !important;
+            border: 1px solid #ccc !important;
+        }
+        .ui-menu-item {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .ui-menu-item:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
     <script>
         function toggleMoraleFields() {
             const type = document.querySelector('input[name="type"]:checked').value;
@@ -236,6 +254,197 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
         }
 
         $(document).ready(function() {
+            // Initialize autocomplete for commune
+            initAddCommuneAutocomplete();
+
+            // Commune-specific street features
+            let streetsForCommuneFeatures = [];
+            let streetsForCommune = [];
+            let selectedCodeInsee = '';
+
+            // Initialize rue field - disabled until commune is selected
+            $('#rue_locataire').attr('placeholder', 'Sélectionnez d\'abord une commune...');
+            $('#rue_locataire').prop('disabled', true);
+
+            // Listen for commune selection to load streets
+            $(document).on('commune-selected', '#commune', function(event, code_insee) {
+                console.log('Commune sélectionnée avec code_insee:', code_insee);
+                selectedCodeInsee = code_insee;
+                
+                if (code_insee) {
+                    // Clear rue field when commune changes
+                    $('#rue_locataire').val('');
+                    $('#rue_validated').val('0');
+                    
+                    // Get commune info
+                    const communeText = $('#commune').val();
+                    const communeId = $('#id_commune').val();
+                    
+                    // Load streets for this commune
+                    fetchStreetsForCommune(code_insee, communeText, communeId);
+                }
+            });
+
+            // Watch commune input changes (when user types, reset commune_id)
+            $(document).on('input', '#commune', function() {
+                if (!$('#id_commune').val()) {
+                    // Clear streets when commune not selected
+                    streetsForCommune = [];
+                    streetsForCommuneFeatures = [];
+                    selectedCodeInsee = '';
+                    $('#rue_locataire').val('');
+                    $('#rue_validated').val('0');
+                    $('#rue_locataire').prop('disabled', true);
+                    $('#rue_locataire').attr('placeholder', 'Sélectionnez d\'abord une commune...');
+                }
+            });
+
+            function fetchStreetsForCommune(code_insee, communeText, communeId) {
+                if (!code_insee && !communeText) {
+                    console.log('Pas de commune sélectionnée');
+                    return;
+                }
+                
+                console.log('🔍 Récupération des rues pour:', { code_insee, communeText, communeId });
+                
+                // Show loading state
+                $('#rue_locataire').prop('disabled', true);
+                $('#rue_locataire').attr('placeholder', 'Chargement des rues...');
+                
+                // Extract postal code from commune text (format: "COMMUNE (75001)")
+                let postalCode = null;
+                let communeName = communeText;
+                if (communeText) {
+                    const match = communeText.match(/^(.+?)\s*\((\d{5})\)$/);
+                    if (match) {
+                        communeName = match[1].trim();
+                        postalCode = match[2];
+                    }
+                }
+                
+                console.log('Extracted:', { postalCode, communeName });
+                
+                // Use simple search - just enable real-time autocomplete
+                console.log('Activation de l\'autocomplétion en temps réel pour', communeName);
+                enableManualEntry('Saisie avec autocomplétion en temps réel');
+                
+                function processStreetResults(features, postalCode) {
+                    streetsForCommuneFeatures = features;
+                    
+                    // Filter by postal code if available to ensure we only get streets from this commune
+                    let filteredFeatures = features;
+                    if (postalCode) {
+                        filteredFeatures = features.filter(f => {
+                            return f.properties && 
+                                   (f.properties.postcode === postalCode ||
+                                    (f.properties.citycode && f.properties.citycode === selectedCodeInsee));
+                        });
+                        console.log('Filtré par code postal/INSEE:', filteredFeatures.length);
+                    }
+                    
+                    // Extract unique street names
+                    const uniqueStreets = new Map();
+                    filteredFeatures.forEach(f => {
+                        if (f.properties && f.properties.name) {
+                            const name = f.properties.name;
+                            if (!uniqueStreets.has(name.toLowerCase())) {
+                                uniqueStreets.set(name.toLowerCase(), {
+                                    label: name,
+                                    value: name,
+                                    feature: f
+                                });
+                            }
+                        }
+                    });
+                    
+                    streetsForCommune = Array.from(uniqueStreets.values()).sort((a, b) => 
+                        a.label.localeCompare(b.label)
+                    );
+                    
+                    console.log('✅ Rues uniques:', streetsForCommune.length);
+                    
+                    if (streetsForCommune.length > 0) {
+                        setRueAutocompleteFromStreets();
+                        $('#rue_locataire').prop('disabled', false);
+                        $('#rue_locataire').attr('placeholder', `${streetsForCommune.length} rue(s) disponible(s) - Tapez pour rechercher`);
+                    } else {
+                        enableManualEntry('Aucune rue trouvée pour cette commune');
+                    }
+                }
+                
+                function enableManualEntry(reason) {
+                    console.log('Saisie manuelle activée:', reason);
+                    streetsForCommune = []; // Pas de cache, utiliser API en temps réel
+                    $('#rue_locataire').prop('disabled', false);
+                    $('#rue_locataire').attr('placeholder', 'Tapez le nom de la rue...');
+                    setRueAutocompleteFromStreets(); // Configure real-time autocomplete
+                }
+            }
+
+            function setRueAutocompleteFromStreets() {
+                try { $('#rue_locataire').autocomplete('destroy'); } catch (e) {}
+                
+                // Always use real-time API search for better results
+                const communeName = $('#commune').val().split('(')[0].trim();
+                const postalCode = $('#commune').val().match(/\((\d{5})\)/)?.[1];
+                
+                $('#rue_locataire').autocomplete({
+                    source: function(request, response) {
+                        // Build query: street name + commune name for better matching
+                        const query = request.term + ' ' + communeName;
+                        
+                        $.ajax({
+                            url: 'https://api-adresse.data.gouv.fr/search/',
+                            data: {
+                                q: query,
+                                limit: 20
+                            },
+                            dataType: 'json',
+                            success: function(data) {
+                                if (data && data.features) {
+                                    // Filter results to only show streets from the selected commune
+                                    const streets = data.features
+                                        .filter(f => {
+                                            const props = f.properties;
+                                            return props && 
+                                                   props.type === 'street' &&
+                                                   (props.postcode === postalCode || 
+                                                    props.citycode === selectedCodeInsee ||
+                                                    props.city === communeName);
+                                        })
+                                        .map(f => ({
+                                            label: f.properties.name,
+                                            value: f.properties.name
+                                        }))
+                                        // Remove duplicates
+                                        .filter((item, index, self) => 
+                                            index === self.findIndex(t => t.value === item.value)
+                                        );
+                                    
+                                    response(streets);
+                                } else {
+                                    response([]);
+                                }
+                            },
+                            error: function() {
+                                response([]);
+                            }
+                        });
+                    },
+                    minLength: 2,
+                    select: function(event, ui) {
+                        $('#rue_locataire').val(ui.item.value);
+                        $('#rue_validated').val('1');
+                        return false;
+                    }
+                });
+            }
+
+            // Reset validation flag when typing in rue field
+            $(document).on('input', '#rue_locataire', function() {
+                if ($('#rue_validated').length) $('#rue_validated').val('0');
+            });
+
             // SIREN lookup when user finishes entering
             let sirenTimeout;
             $('#siren').on('input', function() {
@@ -258,68 +467,32 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
                 $(this).val(val);
             });
 
-            // Commune autocomplete
-            $("#commune").autocomplete({
-                source: function(request, response) {
-                    $.ajax({
-                        url: "../api/search_communes.php",
-                        dataType: "json",
-                        data: {
-                            q: request.term
-                        },
-                        success: function(data) {
-                            response(data);
-                        }
-                    });
-                },
-                minLength: 2,
-                select: function(event, ui) {
-                    $("#commune").val(ui.item.label);
-                    $("#id_commune").val(ui.item.id);
-                    return false;
-                }
-            });
-
-            $("#commune").on('input', function() {
-                $("#id_commune").val('');
-            });
-
-            // When typing in street, mark address as not validated
-            $(document).on('input', '#rue_locataire', function() {
-                if ($('#rue_validated').length) $('#rue_validated').val('0');
-            });
-
-            // Initialize address autocomplete for the street input with separated display
-            if (document.querySelector('#rue_locataire')) {
-                initAddressAutocomplete('#rue_locataire', function(item) {
-                    // Extract street name only
-                    const streetName = item.label.split(',')[0].trim();
-                    $('#rue_locataire').val(streetName);
-                    $('#rue_locataire_full').val(item.label);
-                    
-                    // mark as validated so the form can be submitted
-                    if ($('#rue_validated').length) $('#rue_validated').val('1');
-                    if (item.city) {
-                        $('#commune').val(item.city);
-                    }
-                    if (item.properties && item.properties.citycode) {
-                        $('#id_commune').val(item.properties.citycode);
-                    }
-                });
-            }
-
             $("#registerForm").on('submit', function(e) {
-                if (!$("#id_commune").val()) {
+                const communeId = $('#id_commune').val();
+                
+                if (!communeId || isNaN(communeId) || parseInt(communeId) <= 0) {
                     alert("Veuillez sélectionner une commune valide dans la liste d'autocomplétion.");
                     e.preventDefault();
                     return false;
                 }
-                // Ensure the street was picked from the autocomplete
-                if ($('#rue_validated').length && $('#rue_validated').val() !== '1') {
-                    alert("Veuillez sélectionner une adresse valide dans la liste d'autocomplétion pour la rue.");
+                
+                const rueValue = $('#rue_locataire').val();
+                const rueValidated = $('#rue_validated').val();
+                
+                if (!rueValue || rueValue.trim() === '') {
+                    alert("Veuillez entrer une adresse.");
                     e.preventDefault();
                     return false;
                 }
+                
+                // More flexible validation - accept if user typed something
+                if (rueValue.length < 3) {
+                    alert("Le nom de la rue doit contenir au moins 3 caractères.");
+                    e.preventDefault();
+                    return false;
+                }
+                
+                console.log('Validation réussie, envoi du formulaire...');
             });
         });
     </script>
@@ -380,20 +553,20 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
                 <small>Format selon le pays sélectionné (ex: FR: 06 12 34 56 78)</small>
             </div>
             <div class="form-group">
+                <label>Commune</label>
+                <input type="text" id="commune" class="form-control" placeholder="Tapez le nom de votre commune" value="<?php echo htmlspecialchars($_POST['commune'] ?? ''); ?>" required>
+                <input type="hidden" id="id_commune" name="id_commune" value="<?php echo htmlspecialchars($_POST['id_commune'] ?? ''); ?>">
+                <small>Sélectionnez une commune dans la liste pour charger les rues disponibles</small>
+            </div>
+            <div class="form-group">
                 <label>Rue</label>
-                <input id="rue_locataire" type="text" class="form-control" name="rue_locataire_only" value="<?php echo htmlspecialchars($_POST['rue_locataire_only'] ?? ''); ?>" placeholder="Sélectionnez une rue via l'autocomplétion" required>
-                <input type="hidden" id="rue_locataire_full" name="rue_locataire" value="<?php echo htmlspecialchars($_POST['rue_locataire'] ?? ''); ?>">
+                <input id="rue_locataire" type="text" class="form-control" name="rue_locataire_only" value="<?php echo htmlspecialchars($_POST['rue_locataire_only'] ?? ''); ?>" placeholder="Sélectionnez d'abord une commune..." required disabled>
                 <input type="hidden" id="rue_validated" name="rue_validated" value="<?php echo htmlspecialchars($_POST['rue_validated'] ?? '0'); ?>">
-                <small>Tapez pour voir les adresses disponibles</small>
+                <small>Les rues seront chargées après sélection de la commune</small>
             </div>
             <div class="form-group">
                 <label>Complément d'adresse</label>
                 <input type="text" class="form-control" name="complement_rue_locataire" value="<?php echo htmlspecialchars($_POST['complement_rue_locataire'] ?? ''); ?>" placeholder="Optionnel (app., bâtiment, etc.)">
-            </div>
-            <div class="form-group">
-                <label>Commune</label>
-                <input type="text" id="commune" class="form-control" placeholder="Tapez le nom de votre commune" value="<?php echo htmlspecialchars($_POST['commune'] ?? ''); ?>" required>
-                <input type="hidden" id="id_commune" name="id_commune" value="<?php echo htmlspecialchars($_POST['id_commune'] ?? ''); ?>">
             </div>
             <div class="form-group" id="morale-fields" style="display:<?php echo (isset($_POST['type']) && $_POST['type'] === 'morale') ? 'block' : 'none'; ?>;">
                 <label>Raison Sociale</label>
@@ -411,11 +584,11 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
             </div>
             <div class="form-group">
                 <label for="password_locataire">Mot de passe</label>
-                <input id="password_locataire" type="password" class="form-control" name="password_locataire" required>
+                <input id="password_locataire" type="password" class="form-control" name="password_locataire" autocomplete="new-password" required>
             </div>
             <div class="form-group">
                 <label for="confirm_password">Confirmer le mot de passe</label>
-                <input id="confirm_password" type="password" class="form-control" name="confirm_password" required>
+                <input id="confirm_password" type="password" class="form-control" name="confirm_password" autocomplete="new-password" required>
             </div>
             <div class="form-group">
                 <label for="captcha_input"><?php echo htmlspecialchars($_SESSION['captcha_question'] ?? ''); ?></label>

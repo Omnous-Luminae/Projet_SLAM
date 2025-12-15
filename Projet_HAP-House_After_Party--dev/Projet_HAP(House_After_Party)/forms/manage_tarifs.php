@@ -167,7 +167,7 @@ try {
                     <?php foreach ($saisons as $s): ?>
                         <div class="tarif-row">
                             <label for="tarif_<?= $s['id_saison'] ?>"><?= htmlspecialchars($s['lib_saison']) ?>:</label>
-                            <input type="number" id="tarif_<?= $s['id_saison'] ?>" name="tarif_saison_<?= $s['id_saison'] ?>" step="0.01" value="<?= isset($defaultTarifsMap[$s['id_saison']]) ? number_format($defaultTarifsMap[$s['id_saison']], 2) : '' ?>" placeholder="€/nuit">
+                            <input type="number" id="tarif_<?= $s['id_saison'] ?>" name="tarif_saison_<?= $s['id_saison'] ?>" step="0.01" value="<?= isset($defaultTarifsMap[$s['id_saison']]) ? number_format($defaultTarifsMap[$s['id_saison']], 2) : '' ?>" placeholder="€/semaine">
                         </div>
                     <?php endforeach; ?>
                 </div>

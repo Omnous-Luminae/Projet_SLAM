@@ -5,6 +5,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'animateur') {
     exit;
 }
 require_once '../config/db.php';
+require_once '../includes/breadcrumbs.php';
 
 // Traitement de la validation/refus
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -18,11 +19,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id_animateur, $id_biens]);
             $message = "Bien validé avec succès !";
             $messageClass = "success";
-        } elseif ($action === 'reject') {
-            $stmt = $pdo->prepare("DELETE FROM Biens WHERE id_biens = ?");
-            $stmt->execute([$id_biens]);
-            $message = "Bien refusé et supprimé.";
-            $messageClass = "success";
+        } elseif ($action === 'reject' || $action === 'delete') {
+            try {
+                // Récupérer et supprimer les fichiers photos
+                $stmtPhotos = $pdo->prepare("SELECT lien_photo FROM Photos WHERE id_biens = ?");
+                $stmtPhotos->execute([$id_biens]);
+                $photos = $stmtPhotos->fetchAll(PDO::FETCH_COLUMN);
+                
+                foreach ($photos as $photo) {
+                    // Essayer plusieurs chemins possibles
+                    $possiblePaths = [
+                        __DIR__ . '/../images/uploads/' . basename($photo),
+                        __DIR__ . '/../' . $photo
+                    ];
+                    
+                    foreach ($possiblePaths as $filePath) {
+                        if (file_exists($filePath)) {
+                            unlink($filePath);
+                            break;
+                        }
+                    }
+                }
+                
+                // Supprimer d'abord les dépendances
+                $pdo->prepare("DELETE FROM Compose WHERE id_biens = ?")->execute([$id_biens]);
+                $pdo->prepare("DELETE FROM Tarif WHERE id_biens = ?")->execute([$id_biens]);
+                $pdo->prepare("DELETE FROM Tarif_Defaut WHERE id_biens = ?")->execute([$id_biens]);
+                $pdo->prepare("DELETE FROM Dispose WHERE id_biens = ?")->execute([$id_biens]);
+                $pdo->prepare("DELETE FROM Reservation WHERE id_biens = ?")->execute([$id_biens]);
+                $pdo->prepare("DELETE FROM Photos WHERE id_biens = ?")->execute([$id_biens]);
+                $pdo->prepare("DELETE FROM Reviews WHERE id_biens = ?")->execute([$id_biens]);
+                
+                // Maintenant supprimer le bien
+                $stmt = $pdo->prepare("DELETE FROM Biens WHERE id_biens = ?");
+                $stmt->execute([$id_biens]);
+                
+                $message = $action === 'delete' ? "Bien supprimé avec succès." : "Bien refusé et supprimé avec toutes ses dépendances.";
+                $messageClass = "success";
+            } catch (PDOException $e) {
+                $message = "Erreur lors de la suppression : " . $e->getMessage();
+                $messageClass = "error";
+            }
         }
     }
 }
@@ -71,7 +108,9 @@ if (!empty($biens_validated)) {
     <title>Validation des Biens - HAP Admin</title>
     <link rel="stylesheet" href="../Css/dashboard.css">
     <link rel="stylesheet" href="../Css/style.css">
+    <link rel="stylesheet" href="../Css/toast.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <?= getBreadcrumbStyles() ?>
     <style>
         .validation-container {
             max-width: 1400px;
@@ -224,9 +263,16 @@ if (!empty($biens_validated)) {
     <?php include '../../theme_toggle.php'; ?>
     
     <div class="validation-container">
+        <?php 
+        renderBreadcrumbs([
+            ['label' => 'Accueil', 'url' => '../../index.php'],
+            ['label' => 'Dashboard', 'url' => '../../apropos.php'],
+            ['label' => 'Validation des Biens']
+        ]);
+        ?>
+        
         <header style="margin-bottom: 30px;">
             <h1>🔍 Validation des Biens</h1>
-            <a href="../apropos.php" style="display: inline-block; margin-top: 10px; color: var(--dashboard-accent); text-decoration: none; font-weight: 600;">← Retour au Dashboard</a>
         </header>
         
         <?php if (isset($message)): ?>
@@ -367,6 +413,17 @@ if (!empty($biens_validated)) {
                                 created_by_id: <?= $bien['created_by_id'] ?? 'NULL' ?>
                             </div>
                         </div>
+                        
+                        <div class="bien-actions" style="margin-top: 15px;">
+                            <form method="POST" style="display: inline;">
+                                <input type="hidden" name="id_biens" value="<?php echo $bien['id_biens']; ?>">
+                                <input type="hidden" name="action" value="delete">
+                                <button type="submit" class="btn-reject" onclick="return confirm('Supprimer définitivement ce bien ?');"
+                                    style="background: #d32f2f; padding: 8px 16px; font-size: 0.9em;">
+                                    🗑️ Supprimer
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -390,5 +447,6 @@ if (!empty($biens_validated)) {
             event.target.classList.add('active');
         }
     </script>
+    <script src="../js/toast.js"></script>
 </body>
 </html>

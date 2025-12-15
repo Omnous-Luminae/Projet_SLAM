@@ -483,11 +483,7 @@ try {
         <a href="../../index.php" class="back-link">← Retour à l'accueil</a>
         
         <div class="header">
-            <h2>🎵 Points d'Intérêt</h2>
-            <p>Gérez les boîtes de nuit et lieux festifs autour de vos biens</p>
-        </div>
-        <div class="header">
-            <h2>🎵 Points d'Intérêt</h2>
+            <h1>🎵 Points d'Intérêt</h1>
             <p>Gérez les boîtes de nuit et lieux festifs autour de vos biens</p>
         </div>
         
@@ -510,6 +506,53 @@ try {
             <div class="stat-card">
                 <div class="stat-label">Communes</div>
                 <div class="stat-number"><?= count($communes) ?></div>
+            </div>
+        </div>
+
+        <!-- Filtres et Recherche -->
+        <div class="form-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-bottom: 30px;">
+            <h3 style="color: white;">🔍 Rechercher et filtrer</h3>
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr auto;">
+                <div class="form-group">
+                    <label for="search-name" style="color: white;">Nom du lieu</label>
+                    <input type="text" id="search-name" placeholder="Rechercher..." onkeyup="filterPoints()">
+                </div>
+                <div class="form-group">
+                    <label for="filter-type" style="color: white;">Type</label>
+                    <select id="filter-type" onchange="filterPoints()">
+                        <option value="">Tous les types</option>
+                        <?php foreach ($types as $t): ?>
+                            <option value="<?= htmlspecialchars($t['lib_type_points_interet']) ?>">
+                                <?= htmlspecialchars($t['lib_type_points_interet']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filter-commune" style="color: white;">Commune</label>
+                    <select id="filter-commune" onchange="filterPoints()">
+                        <option value="">Toutes les communes</option>
+                        <?php 
+                        $uniqueCommunes = array_unique(array_column($ptsInterets, 'nom_commune'));
+                        sort($uniqueCommunes);
+                        foreach ($uniqueCommunes as $c): 
+                            if ($c):
+                        ?>
+                            <option value="<?= htmlspecialchars($c) ?>">
+                                <?= htmlspecialchars($c) ?>
+                            </option>
+                        <?php 
+                            endif;
+                        endforeach; 
+                        ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="color: white; opacity: 0;">Action</label>
+                    <button type="button" onclick="resetFilters()" style="background: white; color: #667eea; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        🔄 Réinitialiser
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -564,9 +607,12 @@ try {
                     Aucun point d'intérêt pour le moment. Ajoutez-en un ci-dessus !
                 </p>
             <?php else: ?>
-                <div class="pts-grid">
+                <div class="pts-grid cards-grid">
                     <?php foreach ($ptsInterets as $pi): ?>
-                        <div class="pts-card <?= (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $pi['id_pts_interet']) ? 'edit-mode-card' : '' ?>">
+                        <div class="pts-card <?= (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $pi['id_pts_interet']) ? 'edit-mode-card' : '' ?>"
+                             data-name="<?= htmlspecialchars($pi['lib_pts_interet']) ?>"
+                             data-type="<?= htmlspecialchars($pi['lib_type_points_interet']) ?>"
+                             data-commune="<?= htmlspecialchars($pi['nom_commune'] ?? '') ?>">
                             <?php if (isset($_POST['edit_mode']) && $_POST['edit_mode'] == $pi['id_pts_interet']): ?>
                                 <!-- Mode édition -->
                                 <form method="post" class="edit-form-inline">
@@ -624,18 +670,9 @@ try {
                                 </div>
                                 
                                 <div class="pts-card-actions">
-                                    <form method="post" style="display:inline; flex: 1;">
-                                        <input type="hidden" name="id_pts_interet" value="<?= htmlspecialchars($pi['id_pts_interet']) ?>">
-                                        <button type="submit" name="edit_mode" value="<?= htmlspecialchars($pi['id_pts_interet']) ?>" class="btn btn-secondary">
-                                            ✏️ Modifier
-                                        </button>
-                                    </form>
-                                    <form method="post" style="display:inline; flex: 1;" onsubmit="return confirm('Supprimer ce point d\'intérêt ?');">
-                                        <input type="hidden" name="id_pts_interet" value="<?= htmlspecialchars($pi['id_pts_interet']) ?>">
-                                        <button type="submit" name="delete_pts_interet" class="btn btn-danger">
-                                            🗑️ Supprimer
-                                        </button>
-                                    </form>
+                                    <a href="pts_interet_detail.php?id=<?= $pi['id_pts_interet'] ?>" class="btn" style="text-decoration: none; width: 100%; text-align: center; display: block;">
+                                        👁️ Voir détails & modifier
+                                    </a>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -800,6 +837,54 @@ try {
                 }
             });
         });
+
+        // Filtrage des points d'intérêt
+        function filterPoints() {
+            const searchName = document.getElementById('search-name').value.toLowerCase();
+            const filterType = document.getElementById('filter-type').value.toLowerCase();
+            const filterCommune = document.getElementById('filter-commune').value.toLowerCase();
+            
+            const cards = document.querySelectorAll('.pts-card');
+            let visibleCount = 0;
+            
+            cards.forEach(card => {
+                const name = card.getAttribute('data-name').toLowerCase();
+                const type = card.getAttribute('data-type').toLowerCase();
+                const commune = card.getAttribute('data-commune').toLowerCase();
+                
+                const matchName = name.includes(searchName);
+                const matchType = filterType === '' || type === filterType;
+                const matchCommune = filterCommune === '' || commune === filterCommune;
+                
+                if (matchName && matchType && matchCommune) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Afficher message si aucun résultat
+            const noResults = document.getElementById('no-results');
+            if (visibleCount === 0) {
+                if (!noResults) {
+                    const msg = document.createElement('div');
+                    msg.id = 'no-results';
+                    msg.style.cssText = 'text-align: center; padding: 40px; color: #999; font-size: 1.2em;';
+                    msg.innerHTML = '📭 Aucun résultat trouvé';
+                    document.querySelector('.cards-grid').appendChild(msg);
+                }
+            } else if (noResults) {
+                noResults.remove();
+            }
+        }
+        
+        function resetFilters() {
+            document.getElementById('search-name').value = '';
+            document.getElementById('filter-type').value = '';
+            document.getElementById('filter-commune').value = '';
+            filterPoints();
+        }
     </script>
 </body>
 </html>

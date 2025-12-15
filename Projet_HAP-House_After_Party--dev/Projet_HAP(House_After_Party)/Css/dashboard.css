@@ -2,7 +2,7 @@
 
 :root {
     --dashboard-bg: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-    --dashboard-text: #ffffff;
+    --dashboard-text: #4c12fbff;
     --dashboard-card-bg: rgba(255, 255, 255, 0.1);
     --dashboard-accent: #ff6b6b;
     --dashboard-accent-secondary: #4ecdc4;

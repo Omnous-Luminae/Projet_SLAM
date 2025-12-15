@@ -1,0 +1,147 @@
+/* Styles pour la validation en temps réel */
+
+.form-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+/* État valide */
+.field-valid input,
+.field-valid select,
+.field-valid textarea {
+    border-color: #10b981 !important;
+    background-image: none !important;
+}
+
+/* État invalide */
+.field-invalid input,
+.field-invalid select,
+.field-invalid textarea {
+    border-color: #ef4444 !important;
+    background-image: none !important;
+}
+
+/* Icône de validation */
+.validation-success {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #10b981;
+    font-weight: bold;
+    font-size: 18px;
+    pointer-events: none;
+}
+
+/* Message d'erreur */
+.validation-error {
+    color: #ef4444;
+    font-size: 0.85em;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    animation: slideDown 0.3s ease;
+}
+
+.validation-error::before {
+    content: '⚠';
+    font-size: 1.1em;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Indicateur de force du mot de passe */
+.password-strength {
+    margin-top: 10px;
+    animation: fadeIn 0.3s ease;
+}
+
+.strength-bar {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.strength-fill {
+    height: 100%;
+    transition: width 0.3s ease, background 0.3s ease;
+    border-radius: 3px;
+}
+
+.strength-label {
+    font-size: 0.85em;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.strength-feedback {
+    font-size: 0.8em;
+    color: #6b7280;
+    margin-top: 5px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Focus sur les champs */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.field-valid input:focus,
+.field-valid select:focus,
+.field-valid textarea:focus {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.field-invalid input:focus,
+.field-invalid select:focus,
+.field-invalid textarea:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Mode sombre */
+[data-theme="dark"] .validation-error {
+    color: #fca5a5;
+}
+
+[data-theme="dark"] .strength-bar {
+    background: #374151;
+}
+
+[data-theme="dark"] .strength-feedback {
+    color: #9ca3af;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .validation-error {
+        font-size: 0.8em;
+    }
+
+    .validation-success {
+        right: 8px;
+        font-size: 16px;
+    }
+}

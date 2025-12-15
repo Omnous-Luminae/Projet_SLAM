@@ -1,9 +1,10 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/breadcrumbs.php';
 
 // Vérifier que l'utilisateur est un animateur (admin)
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'animateur') {
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'animateur') {
     header('Location: ../auth/connexion_admin.php');
     exit;
 }
@@ -51,10 +52,11 @@ try {
         SELECT 
             r.*,
             b.nom_biens,
-            b.ville_biens,
+            c.nom_commune as ville_biens,
             CONCAT(l.prenom_locataire, ' ', l.nom_locataire) as nom_locataire
         FROM Reviews r
         JOIN Biens b ON r.id_biens = b.id_biens
+        LEFT JOIN Commune c ON b.id_commune = c.id_commune
         LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire
         WHERE r.validated = FALSE
         ORDER BY r.created_at DESC
@@ -66,11 +68,12 @@ try {
         SELECT 
             r.*,
             b.nom_biens,
-            b.ville_biens,
+            c.nom_commune as ville_biens,
             CONCAT(l.prenom_locataire, ' ', l.nom_locataire) as nom_locataire,
             CONCAT(a.prenom_animateur, ' ', a.nom_animateur) as validateur
         FROM Reviews r
         JOIN Biens b ON r.id_biens = b.id_biens
+        LEFT JOIN Commune c ON b.id_commune = c.id_commune
         LEFT JOIN Locataire l ON r.id_locataire = l.id_locataire
         LEFT JOIN Animateur a ON r.validated_by = a.id_animateur
         WHERE r.validated = TRUE
@@ -107,6 +110,8 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Validation des Avis - HAP Admin</title>
     <link rel="stylesheet" href="../Css/dashboard.css">
+    <link rel="stylesheet" href="../Css/toast.css">
+    <?= getBreadcrumbStyles() ?>
     <style>
         :root {
             --primary-color: #667eea;
@@ -380,6 +385,14 @@ try {
     <?php include '../../theme_toggle.php'; ?>
 
     <div class="container">
+        <?php 
+        renderBreadcrumbs([
+            ['label' => 'Accueil', 'url' => '../../index.php'],
+            ['label' => 'Dashboard', 'url' => '../../apropos.php'],
+            ['label' => 'Validation des Avis']
+        ]);
+        ?>
+        
         <div class="header">
             <h1>🎭 Validation des Avis</h1>
             <p>Gérez et modérez les avis des locataires sur les biens</p>
@@ -518,6 +531,16 @@ try {
                                 "<?= nl2br(htmlspecialchars($review['content'])) ?>"
                             </div>
                         <?php endif; ?>
+
+                        <div class="review-actions">
+                            <form method="POST" style="display: inline;">
+                                <input type="hidden" name="review_id" value="<?= $review['id_review'] ?>">
+                                <button type="submit" name="reject_review" class="btn btn-danger" 
+                                        onclick="return confirm('Supprimer cet avis définitivement ?')">
+                                    🗑️ Supprimer
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -541,5 +564,6 @@ try {
             event.target.classList.add('active');
         }
     </script>
+    <script src="../js/toast.js"></script>
 </body>
 </html>
