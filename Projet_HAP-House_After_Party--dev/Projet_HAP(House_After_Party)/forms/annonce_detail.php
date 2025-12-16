@@ -428,25 +428,298 @@ if (isset($_SESSION['user_id'])) {
         </div>
 
         <?php if ($photos): ?>
-            <div class="image-gallery">
-                <?php foreach ($photos as $photo): ?>
-                    <?php
-                    $photoLabel = trim(str_ireplace('photo', '', $photo['nom_photos']));
-                    // Gérer les différents formats de chemin de photos
-                    $lienPhoto = $photo['lien_photo'];
-                    if (strpos($lienPhoto, 'Projet_HAP') !== false || strpos($lienPhoto, 'images/uploads/') !== false) {
-                        // Ancien format avec chemin complet
-                        $photoPath = '/' . $lienPhoto;
-                    } else {
-                        // Nouveau format avec juste le nom du fichier
-                        $photoPath = '../images/uploads/' . basename($lienPhoto);
-                    }
-                    ?>
-                    <a href="<?= htmlspecialchars($photoPath) ?>" data-lightbox="gallery" data-title="<?= htmlspecialchars($photoLabel) ?>">
-                        <img src="<?= htmlspecialchars($photoPath) ?>" alt="<?= htmlspecialchars($bien['nom_biens']) ?>" class="gallery-image">
+            <?php
+            // Préparer les chemins des photos
+            $photoPaths = [];
+            foreach ($photos as $photo) {
+                $lienPhoto = $photo['lien_photo'];
+                if (strpos($lienPhoto, 'Projet_HAP') !== false || strpos($lienPhoto, 'images/uploads/') !== false) {
+                    $photoPath = '/' . $lienPhoto;
+                } else {
+                    $photoPath = '../images/uploads/' . basename($lienPhoto);
+                }
+                $photoPaths[] = [
+                    'path' => $photoPath,
+                    'label' => trim(str_ireplace('photo', '', $photo['nom_photos']))
+                ];
+            }
+            $mainPhoto = $photoPaths[0];
+            ?>
+            
+            <!-- Galerie moderne -->
+            <div class="modern-gallery">
+                <!-- Image principale -->
+                <div class="gallery-main">
+                    <a href="<?= htmlspecialchars($mainPhoto['path']) ?>" data-lightbox="gallery" data-title="<?= htmlspecialchars($mainPhoto['label']) ?>" id="main-photo-link">
+                        <img src="<?= htmlspecialchars($mainPhoto['path']) ?>" alt="<?= htmlspecialchars($bien['nom_biens']) ?>" id="main-photo" class="main-image">
+                        <div class="gallery-overlay">
+                            <span class="zoom-icon">🔍</span>
+                            <span class="photo-count"><?= count($photos) ?> photos</span>
+                        </div>
                     </a>
-                <?php endforeach; ?>
+                    
+                    <?php if (count($photos) > 1): ?>
+                    <button class="gallery-nav gallery-prev" onclick="changeMainPhoto(-1)">❮</button>
+                    <button class="gallery-nav gallery-next" onclick="changeMainPhoto(1)">❯</button>
+                    <?php endif; ?>
+                </div>
+                
+                <!-- Miniatures -->
+                <?php if (count($photos) > 1): ?>
+                <div class="gallery-thumbnails">
+                    <?php foreach ($photoPaths as $index => $photo): ?>
+                        <div class="thumbnail-item <?= $index === 0 ? 'active' : '' ?>" onclick="setMainPhoto(<?= $index ?>)">
+                            <img src="<?= htmlspecialchars($photo['path']) ?>" alt="Photo <?= $index + 1 ?>">
+                            <a href="<?= htmlspecialchars($photo['path']) ?>" data-lightbox="gallery" data-title="<?= htmlspecialchars($photo['label']) ?>" class="thumbnail-lightbox"></a>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
             </div>
+            
+            <style>
+                .modern-gallery {
+                    margin: 25px 0;
+                    border-radius: 16px;
+                    overflow: hidden;
+                    background: var(--bg-card, #fff);
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+                }
+                
+                .gallery-main {
+                    position: relative;
+                    width: 100%;
+                    height: 450px;
+                    overflow: hidden;
+                    background: #1a1a2e;
+                }
+                
+                .gallery-main .main-image {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    transition: transform 0.5s ease;
+                }
+                
+                .gallery-main:hover .main-image {
+                    transform: scale(1.02);
+                }
+                
+                .gallery-overlay {
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    padding: 20px;
+                    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    opacity: 0;
+                    transition: opacity 0.3s;
+                }
+                
+                .gallery-main:hover .gallery-overlay {
+                    opacity: 1;
+                }
+                
+                .gallery-overlay .zoom-icon {
+                    font-size: 1.5em;
+                    color: white;
+                    background: rgba(255,255,255,0.2);
+                    padding: 10px 15px;
+                    border-radius: 10px;
+                    backdrop-filter: blur(5px);
+                }
+                
+                .gallery-overlay .photo-count {
+                    color: white;
+                    font-weight: 600;
+                    background: rgba(102, 126, 234, 0.9);
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-size: 0.9em;
+                }
+                
+                .gallery-nav {
+                    position: absolute;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: rgba(255,255,255,0.9);
+                    border: none;
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    font-size: 1.2em;
+                    color: #333;
+                    transition: all 0.3s;
+                    opacity: 0;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                }
+                
+                .gallery-main:hover .gallery-nav {
+                    opacity: 1;
+                }
+                
+                .gallery-nav:hover {
+                    background: #667eea;
+                    color: white;
+                    transform: translateY(-50%) scale(1.1);
+                }
+                
+                .gallery-prev { left: 20px; }
+                .gallery-next { right: 20px; }
+                
+                .gallery-thumbnails {
+                    display: flex;
+                    gap: 10px;
+                    padding: 15px;
+                    overflow-x: auto;
+                    background: var(--bg-card, #f8f9fa);
+                    scrollbar-width: thin;
+                }
+                
+                .gallery-thumbnails::-webkit-scrollbar {
+                    height: 6px;
+                }
+                
+                .gallery-thumbnails::-webkit-scrollbar-track {
+                    background: #eee;
+                    border-radius: 3px;
+                }
+                
+                .gallery-thumbnails::-webkit-scrollbar-thumb {
+                    background: #667eea;
+                    border-radius: 3px;
+                }
+                
+                .thumbnail-item {
+                    flex-shrink: 0;
+                    width: 100px;
+                    height: 70px;
+                    border-radius: 10px;
+                    overflow: hidden;
+                    cursor: pointer;
+                    position: relative;
+                    border: 3px solid transparent;
+                    transition: all 0.3s;
+                }
+                
+                .thumbnail-item:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                }
+                
+                .thumbnail-item.active {
+                    border-color: #667eea;
+                    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+                }
+                
+                .thumbnail-item img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+                
+                .thumbnail-item .thumbnail-lightbox {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    display: none;
+                }
+                
+                /* Dark mode */
+                [data-theme="dark"] .modern-gallery {
+                    background: var(--bg-card, #1e293b);
+                }
+                
+                [data-theme="dark"] .gallery-thumbnails {
+                    background: var(--bg-card, #1e293b);
+                }
+                
+                [data-theme="dark"] .gallery-nav {
+                    background: rgba(30, 41, 59, 0.9);
+                    color: #f1f5f9;
+                }
+                
+                [data-theme="dark"] .gallery-nav:hover {
+                    background: #667eea;
+                    color: white;
+                }
+                
+                /* Responsive */
+                @media (max-width: 768px) {
+                    .gallery-main {
+                        height: 300px;
+                    }
+                    
+                    .gallery-nav {
+                        width: 40px;
+                        height: 40px;
+                        font-size: 1em;
+                    }
+                    
+                    .gallery-prev { left: 10px; }
+                    .gallery-next { right: 10px; }
+                    
+                    .thumbnail-item {
+                        width: 80px;
+                        height: 55px;
+                    }
+                    
+                    .gallery-overlay {
+                        opacity: 1;
+                        padding: 15px;
+                    }
+                }
+            </style>
+            
+            <script>
+                // Données des photos
+                var galleryPhotos = <?= json_encode($photoPaths) ?>;
+                var currentPhotoIndex = 0;
+                
+                function setMainPhoto(index) {
+                    currentPhotoIndex = index;
+                    var photo = galleryPhotos[index];
+                    
+                    // Mettre à jour l'image principale avec animation
+                    var mainImg = document.getElementById('main-photo');
+                    var mainLink = document.getElementById('main-photo-link');
+                    
+                    mainImg.style.opacity = '0';
+                    setTimeout(function() {
+                        mainImg.src = photo.path;
+                        mainLink.href = photo.path;
+                        mainLink.setAttribute('data-title', photo.label);
+                        mainImg.style.opacity = '1';
+                    }, 150);
+                    
+                    // Mettre à jour les miniatures actives
+                    document.querySelectorAll('.thumbnail-item').forEach(function(thumb, i) {
+                        thumb.classList.toggle('active', i === index);
+                    });
+                }
+                
+                function changeMainPhoto(direction) {
+                    var newIndex = currentPhotoIndex + direction;
+                    if (newIndex < 0) newIndex = galleryPhotos.length - 1;
+                    if (newIndex >= galleryPhotos.length) newIndex = 0;
+                    setMainPhoto(newIndex);
+                }
+                
+                // Navigation clavier
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'ArrowLeft') changeMainPhoto(-1);
+                    if (e.key === 'ArrowRight') changeMainPhoto(1);
+                });
+                
+                // Transition smooth pour l'image
+                document.getElementById('main-photo').style.transition = 'opacity 0.15s ease';
+            </script>
         <?php endif; ?>
 
         <?php if (!empty($averageRating)): ?>

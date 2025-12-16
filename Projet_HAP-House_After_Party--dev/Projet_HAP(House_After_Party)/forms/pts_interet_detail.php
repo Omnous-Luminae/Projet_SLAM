@@ -665,10 +665,24 @@ try {
                     </div>
                 <?php else: ?>
                     <div class="photos-grid">
-                        <?php foreach ($photos as $photo): ?>
+                        <?php foreach ($photos as $photo): 
+                            // Gérer les différents formats de chemin
+                            $lienPhoto = $photo['lien_photo_pts'];
+                            if (strpos($lienPhoto, 'Projet_HAP') !== false || strpos($lienPhoto, 'images/uploads/') !== false) {
+                                // Chemin complet depuis la racine
+                                $photoPath = '/' . $lienPhoto;
+                            } else {
+                                // Juste le nom du fichier - chercher dans poi/ ou uploads/
+                                if (file_exists(__DIR__ . '/../images/uploads/poi/' . $lienPhoto)) {
+                                    $photoPath = '../images/uploads/poi/' . $lienPhoto;
+                                } else {
+                                    $photoPath = '../images/uploads/' . $lienPhoto;
+                                }
+                            }
+                        ?>
                             <div class="photo-card">
-                                <a href="../images/uploads/<?= htmlspecialchars($photo['lien_photo_pts']) ?>" data-lightbox="pts-gallery">
-                                    <img src="../images/uploads/<?= htmlspecialchars($photo['lien_photo_pts']) ?>" 
+                                <a href="<?= htmlspecialchars($photoPath) ?>" data-lightbox="pts-gallery">
+                                    <img src="<?= htmlspecialchars($photoPath) ?>" 
                                          alt="Photo de <?= htmlspecialchars($ptsInteret['lib_pts_interet']) ?>">
                                 </a>
                                 <div class="photo-overlay">
