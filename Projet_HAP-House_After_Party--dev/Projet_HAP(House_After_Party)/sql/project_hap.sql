@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : mar. 16 déc. 2025 à 10:58
+-- Généré le : mar. 16 déc. 2025 à 11:46
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -40,7 +40,7 @@ CREATE TABLE `admin_login_attempts` (
 --
 
 INSERT INTO `admin_login_attempts` (`id`, `ip_address`, `email`, `success`, `attempt_time`) VALUES
-(3, '::1', 'enjolras.ethan3@gmail.com', 1, '2025-12-16 09:59:38');
+(5, '::1', 'enjolras.ethan3@gmail.com', 1, '2025-12-16 11:33:53');
 
 -- --------------------------------------------------------
 
@@ -37226,6 +37226,35 @@ INSERT INTO `compose` (`id_biens`, `id_prestation`, `quantite`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `contact_messages`
+--
+
+CREATE TABLE `contact_messages` (
+  `id_message` int(11) NOT NULL,
+  `type_message` enum('question','signalement','erreur','suggestion','autre') NOT NULL,
+  `sujet` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `nom` varchar(100) DEFAULT NULL,
+  `priorite` enum('basse','normale','haute','urgente') DEFAULT 'normale',
+  `page_concernee` varchar(255) DEFAULT NULL,
+  `id_locataire` int(11) DEFAULT NULL,
+  `statut` enum('nouveau','en_cours','resolu','ferme') DEFAULT 'nouveau',
+  `reponse_admin` text DEFAULT NULL,
+  `date_creation` datetime DEFAULT current_timestamp(),
+  `date_modification` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `contact_messages`
+--
+
+INSERT INTO `contact_messages` (`id_message`, `type_message`, `sujet`, `message`, `email`, `nom`, `priorite`, `page_concernee`, `id_locataire`, `statut`, `reponse_admin`, `date_creation`, `date_modification`) VALUES
+(1, 'question', 'test', 'je teste un message', 'enjolras.ethan3@gmail.com', 'Ethan Enjolras', 'normale', '', 13, 'resolu', 'bien sur', '2025-12-16 11:26:49', '2025-12-16 11:29:57');
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `dispose`
 --
 
@@ -37335,7 +37364,7 @@ INSERT INTO `locataire` (`id_locataire`, `nom_locataire`, `prenom_locataire`, `d
 (10, 'Lambert', 'Chloé', '1996-10-08', 'chloe.lambert@email.fr', '$2y$10$92IXUNpkjO0rO', '0600112233', '41 Rue Nationale', 'Apt 22', NULL, NULL, 29917),
 (11, 'Société', 'Événements Pro', '1980-01-01', 'contact@events-pro.fr', '$2y$10$92IXUNpkjO0rO', '0700112233', '50 Avenue des Entreprises', NULL, 'Events Pro SARL', '12345678901234', 30438),
 (12, 'Entreprise', 'Vacances Corp', '1975-01-01', 'info@vacances-corp.fr', '$2y$10$92IXUNpkjO0rO', '0700223344', '88 Rue du Business', NULL, 'Vacances Corp SAS', '23456789012345', 19746),
-(13, 'Enjolras', 'Ethan', '2006-05-19', 'enjolras.ethan3@gmail.com', '$2y$10$YcIhgv2iMjN4t', '0768872301', 'Rue Des Jargasses', '', NULL, NULL, 6897);
+(13, 'Enjolras', 'Ethan', '2006-05-19', 'enjolras.ethan3@gmail.com', '$2y$10$kob9tz3Vkh4kd', '0768872301', 'Rue Des Jargasses', '', NULL, NULL, 6897);
 
 -- --------------------------------------------------------
 
@@ -37923,6 +37952,13 @@ CREATE TABLE `user_login_attempts` (
   `attempt_time` datetime DEFAULT current_timestamp(),
   `success` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `user_login_attempts`
+--
+
+INSERT INTO `user_login_attempts` (`id`, `ip_address`, `email`, `attempt_time`, `success`) VALUES
+(2, '::1', 'enjolras.ethan3@gmail.com', '2025-12-16 11:30:55', 1);
 
 -- --------------------------------------------------------
 
@@ -74894,6 +74930,13 @@ ALTER TABLE `compose`
   ADD KEY `id_prestation` (`id_prestation`);
 
 --
+-- Index pour la table `contact_messages`
+--
+ALTER TABLE `contact_messages`
+  ADD PRIMARY KEY (`id_message`),
+  ADD KEY `id_locataire` (`id_locataire`);
+
+--
 -- Index pour la table `dispose`
 --
 ALTER TABLE `dispose`
@@ -75072,7 +75115,7 @@ ALTER TABLE `villes_france_free`
 -- AUTO_INCREMENT pour la table `admin_login_attempts`
 --
 ALTER TABLE `admin_login_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT pour la table `animateur`
@@ -75097,6 +75140,12 @@ ALTER TABLE `biens`
 --
 ALTER TABLE `commune`
   MODIFY `id_commune` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36702;
+
+--
+-- AUTO_INCREMENT pour la table `contact_messages`
+--
+ALTER TABLE `contact_messages`
+  MODIFY `id_message` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT pour la table `evenement`
@@ -75210,7 +75259,7 @@ ALTER TABLE `type_pts_interet`
 -- AUTO_INCREMENT pour la table `user_login_attempts`
 --
 ALTER TABLE `user_login_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT pour la table `user_registration_attempts`
@@ -75243,6 +75292,12 @@ ALTER TABLE `biens`
 ALTER TABLE `compose`
   ADD CONSTRAINT `compose_ibfk_1` FOREIGN KEY (`id_biens`) REFERENCES `biens` (`id_biens`),
   ADD CONSTRAINT `compose_ibfk_2` FOREIGN KEY (`id_prestation`) REFERENCES `prestation` (`id_prestation`);
+
+--
+-- Contraintes pour la table `contact_messages`
+--
+ALTER TABLE `contact_messages`
+  ADD CONSTRAINT `contact_messages_ibfk_1` FOREIGN KEY (`id_locataire`) REFERENCES `locataire` (`id_locataire`) ON DELETE SET NULL;
 
 --
 -- Contraintes pour la table `dispose`
