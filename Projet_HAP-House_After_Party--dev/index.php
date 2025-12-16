@@ -495,7 +495,7 @@ require_once __DIR__ . '/Projet_HAP(House_After_Party)/config/db.php';
             <a href="about.php" style="color: #666; text-decoration: none;">À propos</a>
             <a href="Projet_HAP(House_After_Party)/forms/Annonce.form.php" style="color: #666; text-decoration: none;">Annonces</a>
             <a href="Projet_HAP(House_After_Party)/forms/Evenement.form.php" style="color: #666; text-decoration: none;">Événements</a>
-            <a href="#" style="color: #666; text-decoration: none;">Contact</a>
+            <a href="contact.php" style="color: #666; text-decoration: none;">Contact</a>
         </div>
         &copy; <?= date('Y') ?> House After Party &mdash; Tous droits réservés.<br>
         <small style="color: #999;">Fait avec ❤️ pour les amoureux des nuits blanches</small>
