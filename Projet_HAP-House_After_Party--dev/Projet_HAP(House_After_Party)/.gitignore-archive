@@ -1,0 +1,56 @@
+# Archive System - Files to ignore
+# These files contain sensitive data and should NOT be committed to version control
+
+# Encryption key
+config/.encryption_key
+config/.encryption_key.*
+
+# Logs
+logs/
+logs/**/*
+*.log
+
+# Backups
+backups/
+backups/**/*
+*.sql.gz
+*.sql.bak
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Environment files
+.env
+.env.local
+.env.*.php
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# System files
+.htaccess.bak
+web.config.bak
+
+# Cache
+cache/
+*.cache
+
+# Archive cache (if enabled)
+*archive.cache*
+
+# Do NOT ignore these files - they are essential
+!.gitkeep
+!logs/.gitkeep
+!backups/.gitkeep
