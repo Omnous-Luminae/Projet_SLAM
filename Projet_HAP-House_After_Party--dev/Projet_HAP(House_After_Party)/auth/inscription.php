@@ -1,24 +1,75 @@
 <?php
 session_start();
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/user_security.php';
 require_once __DIR__ . '/../classes/Locataire/Locataire.php';
 
+// Polyfills pour environnements sans certaines extensions
+if (!function_exists('ctype_digit')) {
+    function ctype_digit($text)
+    {
+        return preg_match('/^\d+$/', $text) === 1;
+    }
+}
+
+if (!function_exists('random_int')) {
+    function random_int($min, $max)
+    {
+        static $seed = null;
+        if ($seed === null) {
+            $seed = (int) (microtime(true) * 1000000);
+        }
+        $seed = ($seed * 1103515245 + 12345) % 0x7fffffff;
+        $range = ($max - $min + 1);
+        return $min + ($seed % $range);
+    }
+}
+
 $message = '';
+$messageType = '';
+$isBlocked = false;
+$cooldownRemaining = 0;
+
+// Récupérer l'IP du client
+$clientIP = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+// Vérifier si l'IP est bloquée pour l'inscription
+if ($pdo && isRegistrationBlocked($pdo, $clientIP)) {
+    $isBlocked = true;
+    $cooldownRemaining = getRegistrationCooldownRemaining($pdo, $clientIP);
+}
+
+// Générer le token CSRF
+$csrfToken = generateUserCsrfToken();
+
 if (isset($_GET['redirect_from']) && $_GET['redirect_from'] === 'reservation') {
     $message = "Vous devez être connecté pour effectuer une réservation.";
+    $messageType = 'info';
 }
 if (isset($_SESSION['redirect_message'])) {
     $message = $_SESSION['redirect_message'];
+    $messageType = 'info';
     unset($_SESSION['redirect_message']);
 }
-// Vérifier le captcha côté serveur
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
-    if (!isset($_POST['captcha']) || !isset($_SESSION['captcha_answer']) || trim($_POST['captcha']) === '' || intval($_POST['captcha']) !== intval($_SESSION['captcha_answer'])) {
-        $message = "Captcha incorrect. Veuillez répondre à la question.";
-    }
 
-    // Si captcha incorrect, on n'exécute pas la suite
-    if (empty($message)) {
+// Vérifier le captcha et CSRF côté serveur
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
+    // Vérification CSRF
+    if (!verifyUserCsrfToken($_POST['csrf_token'] ?? '')) {
+        $message = "Session expirée. Veuillez réessayer.";
+        $messageType = 'error';
+    } elseif ($isBlocked) {
+        $message = "Trop de tentatives d'inscription. Réessayez dans " . ceil($cooldownRemaining / 60) . " minutes.";
+        $messageType = 'error';
+    } elseif (!isset($_POST['captcha']) || !isset($_SESSION['captcha_answer']) || trim($_POST['captcha']) === '' || intval($_POST['captcha']) !== intval($_SESSION['captcha_answer'])) {
+        $message = "Captcha incorrect. Veuillez répondre à la question.";
+        $messageType = 'error';
+        // Enregistrer la tentative
+        if ($pdo) {
+            recordRegistrationAttempt($pdo, $clientIP, $_POST['email_locataire'] ?? null, false);
+        }
+    } else {
+    // Si captcha correct, continuer
     $type = $_POST['type'] ?? '';
     $nom_locataire = trim($_POST['nom_locataire'] ?? '');
     $prenom_locataire = trim($_POST['prenom_locataire'] ?? '');
@@ -163,22 +214,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
 
             $locataireObj = new Locataire(null, $nom_locataire, $prenom_locataire, $email_locataire, $tel_locataire, $date_naissance_locataire, $hashed_password, $rue_locataire_only, $complement_rue_locataire, $pdo);
             if ($locataireObj->createLocataire($nom_locataire, $prenom_locataire, $email_locataire, $tel_locataire, $date_naissance_locataire, $hashed_password, $rue_locataire_only, $complement_rue_locataire, $siret_value, $raison_sociale_value, $id_commune)) {
-                $message = "Inscription réussie. Vous pouvez maintenant vous connecter.";
+                // Enregistrer le succès
+                if ($pdo) {
+                    recordRegistrationAttempt($pdo, $clientIP, $email_locataire, true);
+                }
+                $message = "✅ Inscription réussie ! Vous pouvez maintenant vous connecter.";
+                $messageType = 'success';
             } else {
+                recordRegistrationAttempt($pdo, $clientIP, $email_locataire, false);
                 $message = "Erreur lors de l'inscription.";
+                $messageType = 'error';
             }
         } else {
             $message = "Erreur de connexion à la base de données.";
+            $messageType = 'error';
         }
     } else {
+        // Enregistrer la tentative échouée
+        if ($pdo) {
+            recordRegistrationAttempt($pdo, $clientIP, $email_locataire ?? null, false);
+        }
         $message = implode('<br>', $errors);
+        $messageType = 'error';
     }
 }
 }
 
+// Régénérer le token CSRF
+$csrfToken = regenerateUserCsrfToken();
+
 // Générer une nouvelle question captcha pour l'affichage (GET ou après POST)
-$a = rand(2, 9);
-$b = rand(2, 9);
+$a = random_int(2, 9);
+$b = random_int(2, 9);
 $_SESSION['captcha_answer'] = $a + $b;
 $_SESSION['captcha_question'] = "Combien font $a + $b ?";
 // Date limite pour être majeur (18 ans)
@@ -188,8 +255,9 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Inscription</title>
-    <link rel="stylesheet" href="../Css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - House After Party</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- jQuery UI CSS -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <!-- Scripts -->
@@ -197,21 +265,394 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
     <script src="../js/autocomplete.js"></script>
     <style>
-        /* Force jQuery UI autocomplete to be visible */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        :root {
+            --bg-primary: rgba(255, 255, 255, 0.95);
+            --bg-secondary: #fafafa;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --border-color: #e0e0e0;
+            --accent: #667eea;
+            --accent-light: #764ba2;
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: rgba(30, 30, 40, 0.95);
+            --bg-secondary: #2a2a3a;
+            --text-primary: #f0f0f0;
+            --text-secondary: #c0c0c0;
+            --border-color: #444;
+        }
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .register-container {
+            background: var(--bg-primary);
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 550px;
+            width: 100%;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .register-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        
+        .back-link:hover { transform: translateX(-5px); }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .header .icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 2em;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+        
+        .message {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .message.info {
+            background: linear-gradient(135deg, #cce5ff, #b8daff);
+            color: #004085;
+            border-left: 4px solid #007bff;
+        }
+        
+        .message.error {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .message.success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        
+        .lockout-warning {
+            background: linear-gradient(135deg, #fff3cd, #ffeeba);
+            color: #856404;
+            padding: 25px;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .lockout-warning .timer {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #dc3545;
+            margin: 15px 0;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        @media (max-width: 500px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+        
+        .form-group {
+            margin-bottom: 18px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 0.95em;
+            font-family: inherit;
+            transition: all 0.3s;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-group input:disabled {
+            background: #f0f0f0;
+            cursor: not-allowed;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: var(--text-secondary);
+            font-size: 0.8em;
+        }
+        
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            padding: 10px 0;
+        }
+        
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 12px 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            transition: all 0.3s;
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .radio-group label:has(input:checked) {
+            border-color: var(--accent);
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .radio-group input[type="radio"] {
+            width: auto;
+            margin: 0;
+        }
+        
+        .password-wrapper {
+            position: relative;
+        }
+        
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            color: var(--text-secondary);
+        }
+        
+        .password-strength {
+            margin-top: 10px;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            display: none;
+            font-size: 0.85em;
+        }
+        
+        .password-strength.visible {
+            display: block;
+        }
+        
+        .strength-bar {
+            height: 5px;
+            background: var(--border-color);
+            border-radius: 3px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        
+        .strength-bar-fill {
+            height: 100%;
+            width: 0%;
+            transition: all 0.3s;
+            border-radius: 3px;
+        }
+        
+        .strength-bar-fill.weak { width: 20%; background: #dc3545; }
+        .strength-bar-fill.fair { width: 40%; background: #ffc107; }
+        .strength-bar-fill.good { width: 70%; background: #17a2b8; }
+        .strength-bar-fill.strong { width: 100%; background: #28a745; }
+        
+        .requirement {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 4px 0;
+            color: var(--text-secondary);
+            font-size: 0.85em;
+        }
+        
+        .requirement.met { color: #28a745; }
+        
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+        
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .auth-links {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 2px solid var(--border-color);
+        }
+        
+        .auth-links p {
+            color: var(--text-secondary);
+            margin: 8px 0;
+        }
+        
+        .auth-links a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .auth-links a:hover { text-decoration: underline; }
+        
+        .security-note {
+            margin-top: 15px;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            font-size: 0.8em;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+        
+        .security-note span { color: #28a745; }
+        
+        .section-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--accent);
+            margin: 20px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        #morale-fields,
+        #morale-siren,
+        #morale-siret {
+            display: none;
+        }
+        
+        .captcha-box {
+            background: linear-gradient(135deg, #e8f4fd, #d1e9fc);
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid #667eea;
+        }
+        
+        .captcha-box label {
+            color: #333 !important;
+            font-weight: 700;
+        }
+        
+        /* jQuery UI Autocomplete Override */
         .ui-autocomplete {
             z-index: 9999 !important;
-            max-height: 300px;
+            max-height: 250px;
             overflow-y: auto;
             overflow-x: hidden;
-            background: white !important;
-            border: 1px solid #ccc !important;
+            background: var(--bg-primary) !important;
+            border: 2px solid var(--accent) !important;
+            border-radius: 10px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
         }
+        
         .ui-menu-item {
-            padding: 5px 10px;
+            padding: 10px 15px;
             cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
         }
-        .ui-menu-item:hover {
-            background-color: #f0f0f0;
+        
+        .ui-menu-item:hover,
+        .ui-menu-item.ui-state-active {
+            background: rgba(102, 126, 234, 0.1) !important;
+            color: var(--accent) !important;
         }
     </style>
     <script>
@@ -556,120 +997,263 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
     </script>
 </head>
 <body>
-    <div class="auth-container">
-        <a href="/../index.php" class="back-link">&larr; Retour à l'accueil</a>
-        <h2>Inscription</h2>
+    <div class="register-container">
+        <a href="../../index.php" class="back-link">← Retour à l'accueil</a>
+        
+        <div class="header">
+            <div class="icon">📝</div>
+            <h1>Créer un compte</h1>
+            <p>Rejoignez House After Party</p>
+        </div>
+        
+        <?php if ($isBlocked && $cooldownRemaining > 0): ?>
+            <div class="lockout-warning">
+                <div style="font-size: 2.5em;">🚫</div>
+                <h3>Inscription temporairement bloquée</h3>
+                <div class="timer" id="countdown"><?= gmdate('i:s', $cooldownRemaining) ?></div>
+                <p>Trop de tentatives. Veuillez patienter.</p>
+            </div>
+            <script>
+                let remaining = <?= $cooldownRemaining ?>;
+                const countdown = document.getElementById('countdown');
+                const timer = setInterval(() => {
+                    remaining--;
+                    if (remaining <= 0) {
+                        clearInterval(timer);
+                        location.reload();
+                    } else {
+                        const min = Math.floor(remaining / 60).toString().padStart(2, '0');
+                        const sec = (remaining % 60).toString().padStart(2, '0');
+                        countdown.textContent = min + ':' + sec;
+                    }
+                }, 1000);
+            </script>
+        <?php else: ?>
+        
         <?php if ($message): ?>
-            <div class="message <?php echo strpos($message, 'réussie') !== false ? 'success' : 'error'; ?>">
+            <div class="message <?= $messageType === 'success' ? 'success' : ($messageType === 'error' ? 'error' : 'info') ?>">
                 <?php echo $message; ?>
             </div>
         <?php endif; ?>
-        <form method="POST" class="auth-form" id="registerForm">
+        
+        <form method="POST" id="registerForm">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+            
             <div class="form-group">
-                <label>Type de personne</label>
+                <label>👤 Type de compte</label>
                 <div class="radio-group">
                     <label>
                         <input type="radio" id="physique" name="type" value="physique" required onchange="toggleMoraleFields()" <?php echo (isset($_POST['type']) && $_POST['type'] === 'physique') ? 'checked' : ''; ?>>
-                        Personne Physique
+                        Particulier
                     </label>
                     <label>
                         <input type="radio" id="morale" name="type" value="morale" required onchange="toggleMoraleFields()" <?php echo (isset($_POST['type']) && $_POST['type'] === 'morale') ? 'checked' : ''; ?>>
-                        Personne Morale
+                        Entreprise
                     </label>
                 </div>
             </div>
-            <div class="form-group">
-                <label>Nom</label>
-                <input type="text" class="form-control" name="nom_locataire" value="<?php echo htmlspecialchars($_POST['nom_locataire'] ?? ''); ?>" required>
-            </div>
-            <div class="form-group">
-                <label>Prénom</label>
-                <input type="text" class="form-control" name="prenom_locataire" value="<?php echo htmlspecialchars($_POST['prenom_locataire'] ?? ''); ?>" required>
-            </div>
-            <div class="form-group">
-                <label>Date de Naissance</label>
-                <input id="date_naissance_locataire" type="date" class="form-control" name="date_naissance_locataire" value="<?php echo htmlspecialchars($_POST['date_naissance_locataire'] ?? ''); ?>" max="<?php echo $maxDob; ?>" required>
-                <small>Vous devez avoir au moins 18 ans pour vous inscrire.</small>
-            </div>
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" class="form-control" name="email_locataire" value="<?php echo htmlspecialchars($_POST['email_locataire'] ?? ''); ?>" required>
-            </div>
-            <div class="form-group">
-                <label>Téléphone</label>
-                <div style="display: flex; gap: 10px;">
-                    <select class="form-control" name="tel_nationalite" id="tel_nationalite" style="flex: 0 0 auto; width: auto;">
-                        <option value="FR" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'FR') ? 'selected' : ''; ?>>🇫🇷 France (+33)</option>
-                        <option value="BE" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'BE') ? 'selected' : ''; ?>>🇧🇪 Belgique (+32)</option>
-                        <option value="DE" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'DE') ? 'selected' : ''; ?>>🇩🇪 Allemagne (+49)</option>
-                        <option value="ES" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'ES') ? 'selected' : ''; ?>>🇪🇸 Espagne (+34)</option>
-                        <option value="IT" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'IT') ? 'selected' : ''; ?>>🇮🇹 Italie (+39)</option>
-                        <option value="CH" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'CH') ? 'selected' : ''; ?>>🇨🇭 Suisse (+41)</option>
-                    </select>
-                    <input type="tel" class="form-control" name="tel_locataire" id="tel_locataire" value="<?php echo htmlspecialchars($_POST['tel_locataire'] ?? ''); ?>" maxlength="20" placeholder="Numéro de téléphone" required>
+            
+            <div class="section-title">📋 Informations personnelles</div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nom</label>
+                    <input type="text" name="nom_locataire" value="<?php echo htmlspecialchars($_POST['nom_locataire'] ?? ''); ?>" required>
                 </div>
-                <small>Format selon le pays sélectionné (ex: FR: 06 12 34 56 78)</small>
+                <div class="form-group">
+                    <label>Prénom</label>
+                    <input type="text" name="prenom_locataire" value="<?php echo htmlspecialchars($_POST['prenom_locataire'] ?? ''); ?>" required>
+                </div>
             </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>🎂 Date de naissance</label>
+                    <input id="date_naissance_locataire" type="date" name="date_naissance_locataire" value="<?php echo htmlspecialchars($_POST['date_naissance_locataire'] ?? ''); ?>" max="<?php echo $maxDob; ?>" required>
+                    <small>18 ans minimum requis</small>
+                </div>
+                <div class="form-group">
+                    <label>📧 Email</label>
+                    <input type="email" name="email_locataire" value="<?php echo htmlspecialchars($_POST['email_locataire'] ?? ''); ?>" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>📱 Téléphone</label>
+                <div style="display: flex; gap: 10px;">
+                    <select name="tel_nationalite" id="tel_nationalite" style="flex: 0 0 140px;">
+                        <option value="FR" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'FR') ? 'selected' : ''; ?>>🇫🇷 +33</option>
+                        <option value="BE" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'BE') ? 'selected' : ''; ?>>🇧🇪 +32</option>
+                        <option value="DE" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'DE') ? 'selected' : ''; ?>>🇩🇪 +49</option>
+                        <option value="ES" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'ES') ? 'selected' : ''; ?>>🇪🇸 +34</option>
+                        <option value="IT" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'IT') ? 'selected' : ''; ?>>🇮🇹 +39</option>
+                        <option value="CH" <?php echo (isset($_POST['tel_nationalite']) && $_POST['tel_nationalite'] === 'CH') ? 'selected' : ''; ?>>🇨🇭 +41</option>
+                    </select>
+                    <input type="tel" name="tel_locataire" id="tel_locataire" value="<?php echo htmlspecialchars($_POST['tel_locataire'] ?? ''); ?>" maxlength="20" required style="flex: 1;">
+                </div>
+            </div>
+            
+            <div class="section-title">📍 Adresse</div>
+            
             <div class="form-group">
                 <label>Commune</label>
-                <input type="text" id="commune" class="form-control" placeholder="Tapez le nom de votre commune" value="<?php echo htmlspecialchars($_POST['commune'] ?? ''); ?>" required>
+                <input type="text" id="commune" placeholder="Tapez le nom de votre commune..." value="<?php echo htmlspecialchars($_POST['commune'] ?? ''); ?>" required>
                 <input type="hidden" id="id_commune" name="id_commune" value="<?php echo htmlspecialchars($_POST['id_commune'] ?? ''); ?>">
-                <small>Sélectionnez une commune dans la liste pour charger les rues disponibles</small>
             </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Rue</label>
+                    <input id="rue_locataire" type="text" name="rue_locataire_only" value="<?php echo htmlspecialchars($_POST['rue_locataire_only'] ?? ''); ?>" placeholder="Sélectionnez d'abord une commune..." required disabled>
+                    <input type="hidden" id="rue_validated" name="rue_validated" value="<?php echo htmlspecialchars($_POST['rue_validated'] ?? '0'); ?>">
+                </div>
+                <div class="form-group">
+                    <label>Complément</label>
+                    <input type="text" name="complement_rue_locataire" value="<?php echo htmlspecialchars($_POST['complement_rue_locataire'] ?? ''); ?>" placeholder="Apt, bâtiment...">
+                </div>
+            </div>
+            
+            <div id="morale-fields" style="display:<?php echo (isset($_POST['type']) && $_POST['type'] === 'morale') ? 'block' : 'none'; ?>;">
+                <div class="section-title">🏢 Informations entreprise</div>
+                <div class="form-group">
+                    <label>Raison Sociale</label>
+                    <input type="text" name="raison_sociale" value="<?php echo htmlspecialchars($_POST['raison_sociale'] ?? ''); ?>" placeholder="Nom de l'entreprise">
+                </div>
+            </div>
+            <div class="form-row" id="morale-siren" style="display:<?php echo (isset($_POST['type']) && $_POST['type'] === 'morale') ? 'flex' : 'none'; ?>;">
+                <div class="form-group">
+                    <label>SIREN</label>
+                    <input type="text" name="siren" id="siren" value="<?php echo htmlspecialchars($_POST['siren'] ?? ''); ?>" maxlength="9" placeholder="9 chiffres">
+                    <small id="siren-info"></small>
+                </div>
+                <div class="form-group" id="morale-siret">
+                    <label>SIRET</label>
+                    <input type="text" name="siret" value="<?php echo htmlspecialchars($_POST['siret'] ?? ''); ?>" maxlength="14" placeholder="14 chiffres">
+                </div>
+            </div>
+            
+            <div class="section-title">🔐 Sécurité</div>
+            
             <div class="form-group">
-                <label>Rue</label>
-                <input id="rue_locataire" type="text" class="form-control" name="rue_locataire_only" value="<?php echo htmlspecialchars($_POST['rue_locataire_only'] ?? ''); ?>" placeholder="Sélectionnez d'abord une commune..." required disabled>
-                <input type="hidden" id="rue_validated" name="rue_validated" value="<?php echo htmlspecialchars($_POST['rue_validated'] ?? '0'); ?>">
-                <small>💡 Utilisez l'autocomplétion pour faciliter la saisie, ou tapez le nom de la rue directement</small>
-            </div>
-            <div class="form-group">
-                <label>Complément d'adresse</label>
-                <input type="text" class="form-control" name="complement_rue_locataire" value="<?php echo htmlspecialchars($_POST['complement_rue_locataire'] ?? ''); ?>" placeholder="Optionnel (app., bâtiment, etc.)">
-            </div>
-            <div class="form-group" id="morale-fields" style="display:<?php echo (isset($_POST['type']) && $_POST['type'] === 'morale') ? 'block' : 'none'; ?>;">
-                <label>Raison Sociale</label>
-                <input type="text" class="form-control" name="raison_sociale" value="<?php echo htmlspecialchars($_POST['raison_sociale'] ?? ''); ?>">
-            </div>
-            <div class="form-group" id="morale-siren" style="display:<?php echo (isset($_POST['type']) && $_POST['type'] === 'morale') ? 'block' : 'none'; ?>;">
-                <label>SIREN</label>
-                <input type="text" class="form-control" name="siren" id="siren" value="<?php echo htmlspecialchars($_POST['siren'] ?? ''); ?>" maxlength="9" placeholder="9 chiffres">
-                <small id="siren-info"></small>
-            </div>
-            <div class="form-group" id="morale-siret" style="display:<?php echo (isset($_POST['type']) && $_POST['type'] === 'morale') ? 'block' : 'none'; ?>;">
-                <label>SIRET</label>
-                <input type="text" class="form-control" name="siret" value="<?php echo htmlspecialchars($_POST['siret'] ?? ''); ?>" maxlength="14" placeholder="14 chiffres">
-                <small>Le SIRET contient le SIREN suivi du numéro d'établissement</small>
-            </div>
-            <div class="form-group">
-                <label for="password_locataire">Mot de passe</label>
-                <input id="password_locataire" type="password" class="form-control" name="password_locataire" autocomplete="new-password" required>
-                <div id="password-strength" style="margin-top:8px;display:none;">
-                    <div style="font-size:0.9em;margin-bottom:6px;">
-                        <span id="strength-text" style="font-weight:600;"></span>
+                <label>🔑 Mot de passe</label>
+                <div class="password-wrapper">
+                    <input id="password_locataire" type="password" name="password_locataire" autocomplete="new-password" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword('password_locataire')">👁️</button>
+                </div>
+                <div class="password-strength" id="password-strength">
+                    <div class="strength-bar">
+                        <div class="strength-bar-fill" id="strength-bar"></div>
                     </div>
-                    <div style="font-size:0.85em;color:#666;">
-                        <div id="req-length" style="margin:3px 0;">⚪ Au moins 8 caractères</div>
-                        <div id="req-upper" style="margin:3px 0;">⚪ Une majuscule (A-Z)</div>
-                        <div id="req-lower" style="margin:3px 0;">⚪ Une minuscule (a-z)</div>
-                        <div id="req-digit" style="margin:3px 0;">⚪ Un chiffre (0-9)</div>
-                        <div id="req-special" style="margin:3px 0;">⚪ Un caractère spécial (@#!$%...)</div>
+                    <div id="strength-text" style="font-weight: 600; margin-bottom: 8px;"></div>
+                    <div class="requirements">
+                        <div class="requirement" id="req-length"><span>○</span> Au moins 8 caractères</div>
+                        <div class="requirement" id="req-upper"><span>○</span> Une majuscule (A-Z)</div>
+                        <div class="requirement" id="req-lower"><span>○</span> Une minuscule (a-z)</div>
+                        <div class="requirement" id="req-digit"><span>○</span> Un chiffre (0-9)</div>
+                        <div class="requirement" id="req-special"><span>○</span> Un caractère spécial</div>
                     </div>
                 </div>
             </div>
+            
             <div class="form-group">
-                <label for="confirm_password">Confirmer le mot de passe</label>
-                <input id="confirm_password" type="password" class="form-control" name="confirm_password" autocomplete="new-password" required>
+                <label>🔑 Confirmer le mot de passe</label>
+                <div class="password-wrapper">
+                    <input id="confirm_password" type="password" name="confirm_password" autocomplete="new-password" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword('confirm_password')">👁️</button>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="captcha_input"><?php echo htmlspecialchars($_SESSION['captcha_question'] ?? ''); ?></label>
-                <input id="captcha_input" type="text" class="form-control" name="captcha" required>
+            
+            <div class="form-group captcha-box">
+                <label>🤖 Vérification : <?php echo htmlspecialchars($_SESSION['captcha_question'] ?? ''); ?></label>
+                <input id="captcha_input" type="text" name="captcha" required>
             </div>
-            <button type="submit" name="register" class="btn btn-primary">S'inscrire</button>
+            
+            <button type="submit" name="register" class="btn-submit">Créer mon compte</button>
         </form>
-        <div class="auth-link">
-            <p>Déjà un compte ? <a href="connexion.php">Connectez-vous ici</a>.</p>
+        
+        <div class="auth-links">
+            <p>Déjà un compte ? <a href="connexion.php">Se connecter</a></p>
         </div>
+        
+        <div class="security-note">
+            <span>🔒</span> Protection CSRF • Anti brute-force • Captcha
+        </div>
+        <?php endif; ?>
     </div>
+    
+    <script>
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const btn = input.parentElement.querySelector('.toggle-password');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
+        
+        // Password strength indicator
+        document.getElementById('password_locataire')?.addEventListener('input', function() {
+            const password = this.value;
+            const strengthDiv = document.getElementById('password-strength');
+            const strengthBar = document.getElementById('strength-bar');
+            const strengthText = document.getElementById('strength-text');
+            
+            if (password.length === 0) {
+                strengthDiv.classList.remove('visible');
+                return;
+            }
+            
+            strengthDiv.classList.add('visible');
+            
+            const hasLength = password.length >= 8;
+            const hasUpper = /[A-Z]/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasDigit = /[0-9]/.test(password);
+            const hasSpecial = /[\W_]/.test(password);
+            
+            updateReq('req-length', hasLength);
+            updateReq('req-upper', hasUpper);
+            updateReq('req-lower', hasLower);
+            updateReq('req-digit', hasDigit);
+            updateReq('req-special', hasSpecial);
+            
+            const score = [hasLength, hasUpper, hasLower, hasDigit, hasSpecial].filter(Boolean).length;
+            
+            strengthBar.className = 'strength-bar-fill';
+            if (score <= 1) {
+                strengthBar.classList.add('weak');
+                strengthText.textContent = '❌ Très faible';
+                strengthText.style.color = '#dc3545';
+            } else if (score <= 2) {
+                strengthBar.classList.add('fair');
+                strengthText.textContent = '⚠️ Faible';
+                strengthText.style.color = '#ffc107';
+            } else if (score <= 4) {
+                strengthBar.classList.add('good');
+                strengthText.textContent = '👍 Correct';
+                strengthText.style.color = '#17a2b8';
+            } else {
+                strengthBar.classList.add('strong');
+                strengthText.textContent = '✅ Fort';
+                strengthText.style.color = '#28a745';
+            }
+        });
+        
+        function updateReq(id, met) {
+            const el = document.getElementById(id);
+            if (met) {
+                el.classList.add('met');
+                el.querySelector('span').textContent = '✓';
+            } else {
+                el.classList.remove('met');
+                el.querySelector('span').textContent = '○';
+            }
+        }
+    </script>
+    
     <?php include '../../theme_toggle.php'; ?>
 </body>
 </html>

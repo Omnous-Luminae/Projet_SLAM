@@ -50,6 +50,7 @@ require_once 'Projet_HAP(House_After_Party)/config/db.php';
                     <option value="Projet_HAP(House_After_Party)/forms/Compose.form.php">Compositions</option>
                     <option value="Projet_HAP(House_After_Party)/forms/Dispose.form.php">Dispositions</option>
                     <option value="Projet_HAP(House_After_Party)/forms/Prestation.form.php">Prestations</option>
+                    <option value="Projet_HAP(House_After_Party)/forms/manage_archives.php">🔐 Archives Réservations</option>
                 </select>
             </div>
         </section>
@@ -161,6 +162,11 @@ require_once 'Projet_HAP(House_After_Party)/config/db.php';
                     <h3>🎭 Gestion des Prestations</h3>
                     <p>Configurez les services supplémentaires.</p>
                     <a href="Projet_HAP(House_After_Party)/forms/Prestation.form.php" class="btn">Gérer les Prestations</a>
+                </div>
+                <div class="management-card">
+                    <h3>🔐 Archives des Réservations</h3>
+                    <p>Consultez et gérez les réservations archivées et cryptées.</p>
+                    <a href="Projet_HAP(House_After_Party)/forms/manage_archives.php" class="btn">Gérer les Archives</a>
                 </div>
             </div>
         </section>

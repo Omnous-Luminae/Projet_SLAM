@@ -1,16 +1,20 @@
 <?php
+session_start();
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../classes/Pts_Interet/PtsInteret.php';
 
 $message = '';
+
+// Vérifier si l'utilisateur est admin/animateur
+$isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'animateur';
 
 try {
     $pdo = $pdo ?? null;
     if ($pdo) {
         $ptsInteretObj = new PtsInteret(null, null, null, null, null, $pdo);
 
-        // Ajout d'un point d'intérêt
-        if (isset($_POST['add_pts_interet'])) {
+        // Ajout d'un point d'intérêt (admin seulement)
+        if (isset($_POST['add_pts_interet']) && $isAdmin) {
             $lib = trim($_POST['lib_pts_interet'] ?? '');
             $desc = trim($_POST['description_pts_interet'] ?? '');
             $rue = trim($_POST['rue_pts_interet'] ?? '');
@@ -50,8 +54,8 @@ try {
             }
         }
 
-        // Modification d'un point d'intérêt
-        if (isset($_POST['edit_pts_interet']) && isset($_POST['id_pts_interet'])) {
+        // Modification d'un point d'intérêt (admin seulement)
+        if (isset($_POST['edit_pts_interet']) && isset($_POST['id_pts_interet']) && $isAdmin) {
             $id = intval($_POST['id_pts_interet']);
             $lib = trim($_POST['lib_pts_interet_edit'] ?? '');
             $desc = trim($_POST['description_pts_interet_edit'] ?? '');
@@ -66,8 +70,8 @@ try {
             }
         }
 
-        // Suppression d'un point d'intérêt
-        if (isset($_POST['delete_pts_interet']) && isset($_POST['id_pts_interet'])) {
+        // Suppression d'un point d'intérêt (admin seulement)
+        if (isset($_POST['delete_pts_interet']) && isset($_POST['id_pts_interet']) && $isAdmin) {
             $id = intval($_POST['id_pts_interet']);
             if ($ptsInteretObj->deletePtsInteret($id)) {
                 $message = "Point d'intérêt supprimé avec succès.";
@@ -556,7 +560,8 @@ try {
             </div>
         </div>
 
-        <!-- Formulaire d'ajout -->
+        <!-- Formulaire d'ajout (admin seulement) -->
+        <?php if ($isAdmin): ?>
         <div class="form-section">
             <h3>➕ Ajouter un nouveau point d'intérêt</h3>
             <form method="post">
@@ -597,6 +602,7 @@ try {
                 <button type="submit" name="add_pts_interet" class="btn">✨ Ajouter le point d'intérêt</button>
             </form>
         </div>
+        <?php endif; ?>
 
         <!-- Liste des points d'intérêt -->
         <div class="form-section">
@@ -671,7 +677,7 @@ try {
                                 
                                 <div class="pts-card-actions">
                                     <a href="pts_interet_detail.php?id=<?= $pi['id_pts_interet'] ?>" class="btn" style="text-decoration: none; width: 100%; text-align: center; display: block;">
-                                        👁️ Voir détails & modifier
+                                        👁️ Voir détails<?php if ($isAdmin): ?> & modifier<?php endif; ?>
                                     </a>
                                 </div>
                             <?php endif; ?>

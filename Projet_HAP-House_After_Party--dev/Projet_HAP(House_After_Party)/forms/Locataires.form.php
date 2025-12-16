@@ -4,6 +4,14 @@ require_once __DIR__ . '/../classes/Locataire/Locataire.php';
 require_once __DIR__ . '/../classes/Locataire/Personne_Physique/Personne_Physique.php';
 require_once __DIR__ . '/../classes/Locataire/Personne_Morale/Personne_Morale.php';
 
+// Polyfill pour ctype_digit si l'extension ctype est absente
+if (!function_exists('ctype_digit')) {
+    function ctype_digit($text)
+    {
+        return preg_match('/^\d+$/', $text) === 1;
+    }
+}
+
 $message = '';
 $locataires = [];
 

@@ -3,6 +3,14 @@ session_start();
 require_once __DIR__ . '/../config/db.php';
 
 $message = '';
+$resetLink = '';
+$showResetLink = false;
+
+// Détecter si on est en environnement local
+$isLocalEnv = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1']) 
+              || strpos($_SERVER['HTTP_HOST'], 'localhost:') === 0
+              || strpos($_SERVER['HTTP_HOST'], '127.0.0.1:') === 0;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
     $email = trim($_POST['email']);
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -25,8 +33,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-            // Generate token and store hash
-            $token = bin2hex(random_bytes(16));
+            // Generate token and store hash (compatible avec anciennes versions PHP)
+            if (function_exists('openssl_random_pseudo_bytes')) {
+                $token = bin2hex(openssl_random_pseudo_bytes(16));
+            } else {
+                // Fallback sans fonctions crypto
+                $token = hash('sha256', uniqid('', true) . time() . $_SERVER['REMOTE_ADDR'] . microtime(true));
+            }
             $token_hash = hash('sha256', $token);
             $expires_at = date('Y-m-d H:i:s', time() + 3600); // 1 hour
 
@@ -36,27 +49,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             // Build reset link
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
             $host = $_SERVER['HTTP_HOST'];
-            $basePath = dirname($_SERVER['REQUEST_URI']);
-            $resetLink = $protocol . '://' . $host . dirname($basePath) . '/Projet_HAP(House_After_Party)/auth/reset_password.php?email=' . urlencode($email) . '&token=' . urlencode($token);
+            $resetLink = $protocol . '://' . $host . '/Projet_HAP(House_After_Party)/auth/reset_password.php?email=' . urlencode($email) . '&token=' . urlencode($token);
 
-            // Try to send email
-            $subject = 'Réinitialisation de votre mot de passe';
-            $body = "Bonjour,\n\nPour réinitialiser votre mot de passe, cliquez sur le lien ci-dessous (valide 1 heure) :\n\n" . $resetLink . "\n\nSi vous n'avez pas demandé cette réinitialisation, ignorez ce message.";
-            $headers = 'From: no-reply@' . $_SERVER['HTTP_HOST'] . "\r\n";
-
-            $sent = false;
-            // Suppression de tout output buffering possible
-            try {
-                $sent = @mail($email, $subject, $body, $headers);
-            } catch (Exception $e) {
-                $sent = false;
-            }
-
-            if ($sent) {
-                $message = 'Un email vous a été envoyé avec les instructions pour réinitialiser votre mot de passe.';
+            // En environnement local, ne pas essayer d'envoyer d'email
+            if ($isLocalEnv) {
+                $showResetLink = true;
+                $message = '🔧 Mode développement local détecté. Utilisez le lien ci-dessous pour réinitialiser votre mot de passe :';
             } else {
-                // For development environments without mail, show the link
-                $message = 'Mail non envoyé (environnement local). Voici le lien de réinitialisation (copiez-le dans votre navigateur) :<br><a href="' . htmlspecialchars($resetLink) . '">' . htmlspecialchars($resetLink) . '</a>';
+                // Try to send email
+                $subject = 'Réinitialisation de votre mot de passe';
+                $body = "Bonjour,\n\nPour réinitialiser votre mot de passe, cliquez sur le lien ci-dessous (valide 1 heure) :\n\n" . $resetLink . "\n\nSi vous n'avez pas demandé cette réinitialisation, ignorez ce message.";
+                $headers = 'From: no-reply@' . $_SERVER['HTTP_HOST'] . "\r\n";
+
+                $sent = false;
+                try {
+                    $sent = @mail($email, $subject, $body, $headers);
+                } catch (Exception $e) {
+                    $sent = false;
+                }
+
+                if ($sent) {
+                    $message = 'Un email vous a été envoyé avec les instructions pour réinitialiser votre mot de passe.';
+                } else {
+                    // Fallback si l'envoi échoue
+                    $showResetLink = true;
+                    $message = '⚠️ Impossible d\'envoyer l\'email. Utilisez le lien ci-dessous :';
+                }
             }
         }
     }
@@ -210,6 +228,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         .help-text a:hover {
             text-decoration: underline;
         }
+        .reset-link-box {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border: 2px solid #4caf50;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .link-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .link-container input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            font-size: 0.85em;
+            background: #fff;
+            color: #333;
+        }
+        .btn-copy {
+            width: auto !important;
+            padding: 12px 16px !important;
+            background: #4caf50 !important;
+            border-radius: 8px !important;
+            font-size: 1.2em !important;
+            box-shadow: none !important;
+        }
+        .btn-copy:hover {
+            background: #388e3c !important;
+        }
+        .btn-reset-direct {
+            display: inline-block;
+            width: 100%;
+            background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 14px 20px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+            box-sizing: border-box;
+        }
+        .btn-reset-direct:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(76, 175, 80, 0.4);
+        }
         @media (max-width: 600px) {
             .container {
                 margin: 10px;
@@ -228,16 +299,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         <h2>Mot de passe oublié</h2>
         <p class="subtitle">Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.</p>
         <?php if ($message): ?>
-            <div class="message<?php echo strpos($message, 'succès') !== false || strpos($message, 'envoyé') !== false ? ' success' : ' error'; ?>"><?php echo $message; ?></div>
+            <div class="message<?php echo $showResetLink ? ' success' : (strpos($message, 'succès') !== false || strpos($message, 'envoyé') !== false ? ' success' : ' error'); ?>"><?php echo $message; ?></div>
+            
+            <?php if ($showResetLink && $resetLink): ?>
+            <div class="reset-link-box">
+                <p style="margin-bottom: 15px; font-weight: 600; color: #333;">🔗 Lien de réinitialisation :</p>
+                <div class="link-container">
+                    <input type="text" id="reset-link" value="<?php echo htmlspecialchars($resetLink); ?>" readonly>
+                    <button type="button" onclick="copyLink()" class="btn-copy" title="Copier le lien">📋</button>
+                </div>
+                <a href="<?php echo htmlspecialchars($resetLink); ?>" class="btn-reset-direct">
+                    🔓 Réinitialiser mon mot de passe maintenant
+                </a>
+                <p style="margin-top: 15px; font-size: 0.85em; color: #666;">
+                    ⏱️ Ce lien expire dans 1 heure
+                </p>
+            </div>
+            <?php endif; ?>
         <?php endif; ?>
+        
+        <?php if (!$showResetLink): ?>
         <form method="post">
             <label for="email">Adresse email</label>
             <input id="email" type="email" name="email" required placeholder="votre.email@exemple.com">
             <button type="submit">Envoyer le lien de réinitialisation</button>
         </form>
+        <?php endif; ?>
         <p class="help-text">
             Vous vous souvenez de votre mot de passe ? <a href="connexion.php">Se connecter</a>
         </p>
     </div>
+    <script>
+        function copyLink() {
+            const linkInput = document.getElementById('reset-link');
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(linkInput.value).then(function() {
+                alert('✅ Lien copié dans le presse-papier !');
+            }).catch(function() {
+                // Fallback for older browsers
+                document.execCommand('copy');
+                alert('✅ Lien copié !');
+            });
+        }
+    </script>
 </body>
 </html>

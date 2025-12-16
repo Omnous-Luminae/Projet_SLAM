@@ -6,6 +6,9 @@ $message = '';
 $id_pts_interet = intval($_GET['id'] ?? 0);
 $editMode = false;
 
+// Vérifier si l'utilisateur est admin/animateur
+$isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'animateur';
+
 if (!$id_pts_interet) {
     header('Location: PtsInteret.form.php');
     exit;
@@ -18,8 +21,8 @@ try {
         $types = $pdo->query('SELECT * FROM Type_Pts_Interet ORDER BY lib_type_points_interet')->fetchAll(PDO::FETCH_ASSOC);
         $communes = $pdo->query('SELECT * FROM Commune ORDER BY nom_commune LIMIT 100')->fetchAll(PDO::FETCH_ASSOC);
 
-        // Modification du point d'intérêt
-        if (isset($_POST['update_pts_interet'])) {
+        // Modification du point d'intérêt (admin seulement)
+        if (isset($_POST['update_pts_interet']) && $isAdmin) {
             $lib = $_POST['lib_pts_interet'] ?? '';
             $desc = $_POST['description_pts_interet'] ?? '';
             $rue = $_POST['rue_pts_interet'] ?? '';
@@ -31,16 +34,16 @@ try {
             $message = "Point d'intérêt modifié avec succès !";
         }
 
-        // Suppression du point d'intérêt
-        if (isset($_POST['delete_pts_interet'])) {
+        // Suppression du point d'intérêt (admin seulement)
+        if (isset($_POST['delete_pts_interet']) && $isAdmin) {
             $stmt = $pdo->prepare('DELETE FROM Pts_Interet WHERE id_pts_interet = ?');
             $stmt->execute([$id_pts_interet]);
             header('Location: PtsInteret.form.php?message=Point d\'intérêt supprimé');
             exit;
         }
 
-        // Mode édition
-        if (isset($_POST['edit_mode'])) {
+        // Mode édition (admin seulement)
+        if (isset($_POST['edit_mode']) && $isAdmin) {
             $editMode = true;
         }
 
@@ -69,8 +72,8 @@ try {
         $stmt->execute([$id_pts_interet]);
         $photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Upload de photo
-        if (isset($_POST['upload_photo']) && isset($_FILES['photo'])) {
+        // Upload de photo (admin seulement)
+        if (isset($_POST['upload_photo']) && isset($_FILES['photo']) && $isAdmin) {
             $file = $_FILES['photo'];
             
             if ($file['error'] === UPLOAD_ERR_OK) {
@@ -106,8 +109,8 @@ try {
             }
         }
 
-        // Suppression de photo
-        if (isset($_POST['delete_photo']) && isset($_POST['id_photo'])) {
+        // Suppression de photo (admin seulement)
+        if (isset($_POST['delete_photo']) && isset($_POST['id_photo']) && $isAdmin) {
             $id_photo = intval($_POST['id_photo']);
             
             $stmt = $pdo->prepare('SELECT lien_photo_pts FROM Photos_PtsInteret WHERE id_photo_pts = ? AND id_pts_interet = ?');
@@ -524,7 +527,7 @@ try {
             <a href="PtsInteret.form.php" class="back-link">← Retour à la liste</a>
             
             <div class="header-actions">
-                <?php if (!$editMode): ?>
+                <?php if (!$editMode && $isAdmin): ?>
                     <form method="POST" style="display: inline;">
                         <button type="submit" name="edit_mode" class="btn">✏️ Modifier</button>
                     </form>
@@ -633,7 +636,8 @@ try {
             <div class="photos-section">
                 <h2>📸 Galerie Photos (<?= count($photos) ?>)</h2>
 
-                <!-- Formulaire d'upload -->
+                <!-- Formulaire d'upload (admin seulement) -->
+                <?php if ($isAdmin): ?>
                 <div class="upload-form">
                     <h3>Ajouter une photo</h3>
                     <form method="POST" enctype="multipart/form-data">
@@ -650,6 +654,7 @@ try {
                         </button>
                     </form>
                 </div>
+                <?php endif; ?>
 
                 <!-- Grille de photos -->
                 <?php if (empty($photos)): ?>
@@ -668,12 +673,14 @@ try {
                                 </a>
                                 <div class="photo-overlay">
                                     <small><?= date('d/m/Y', strtotime($photo['date_ajout'])) ?></small>
+                                    <?php if ($isAdmin): ?>
                                     <form method="POST" style="display: inline; float: right;" onsubmit="return confirm('Supprimer cette photo ?')">
                                         <input type="hidden" name="id_photo" value="<?= $photo['id_photo_pts'] ?>">
                                         <button type="submit" name="delete_photo" class="btn-delete-photo">
                                             🗑️ Supprimer
                                         </button>
                                     </form>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
