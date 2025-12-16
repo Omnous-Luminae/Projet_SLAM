@@ -1,0 +1,136 @@
+/**
+ * Styles CSS pour la pagination
+ */
+
+.pagination-wrapper {
+    margin: 30px 0;
+    display: flex;
+    justify-content: center;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.pagination-info {
+    margin-right: 15px;
+    color: var(--text-secondary, #64748b);
+    font-size: 0.9em;
+}
+
+.pagination-btn,
+.pagination-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9em;
+    transition: all 0.3s;
+    background: var(--bg-card, #fff);
+    color: var(--text-primary, #1e293b);
+    border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.pagination-number {
+    min-width: 42px;
+    padding: 10px;
+}
+
+.pagination-btn:hover:not(.disabled),
+.pagination-number:hover:not(.active) {
+    background: var(--accent, #667eea);
+    color: white;
+    border-color: var(--accent, #667eea);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.pagination-number.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-color: transparent;
+    cursor: default;
+}
+
+.pagination-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.pagination-ellipsis {
+    padding: 10px 5px;
+    color: var(--text-secondary, #64748b);
+}
+
+/* Style compact */
+.pagination-compact .pagination-btn,
+.pagination-compact .pagination-number {
+    padding: 8px 12px;
+    font-size: 0.85em;
+}
+
+.pagination-compact .pagination-number {
+    min-width: 36px;
+}
+
+/* Style simple (sans numéros, juste prev/next) */
+.pagination-simple .pagination-number,
+.pagination-simple .pagination-ellipsis {
+    display: none;
+}
+
+.pagination-simple .pagination-info {
+    margin: 0 20px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .pagination {
+        gap: 5px;
+    }
+    
+    .pagination-info {
+        width: 100%;
+        text-align: center;
+        margin: 0 0 10px 0;
+    }
+    
+    .pagination-btn {
+        padding: 8px 12px;
+        font-size: 0.85em;
+    }
+    
+    .pagination-number {
+        padding: 8px;
+        min-width: 36px;
+    }
+    
+    /* Masquer certains numéros sur mobile */
+    .pagination-number:not(.active):not(:first-of-type):not(:last-of-type) {
+        display: none;
+    }
+}
+
+/* Dark mode support */
+[data-theme="dark"] .pagination-btn,
+[data-theme="dark"] .pagination-number {
+    background: var(--bg-card, #1e293b);
+    color: var(--text-primary, #f1f5f9);
+    border-color: var(--border-color, #334155);
+}
+
+[data-theme="dark"] .pagination-info,
+[data-theme="dark"] .pagination-ellipsis {
+    color: var(--text-secondary, #94a3b8);
+}

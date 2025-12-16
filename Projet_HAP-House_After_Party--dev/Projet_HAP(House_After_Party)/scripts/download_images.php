@@ -92,15 +92,16 @@ foreach ($biens as $bien) {
     $id_biens = $bien['id_biens'];
     $nom = $bien['nom_biens'];
     
-    // Vérifier si le bien a déjà des photos
-    $hasPhotos = isset($existingPhotos[$id_biens]) && $existingPhotos[$id_biens] > 0;
+    // Compter les photos existantes
+    $currentPhotoCount = isset($existingPhotos[$id_biens]) ? $existingPhotos[$id_biens] : 0;
     
-    if ($hasPhotos) {
-        echo "[$id_biens] $nom - A deja " . $existingPhotos[$id_biens] . " photo(s), ignore\n";
+    // Ajouter des images même si le bien en a déjà (max 5 par bien)
+    if ($currentPhotoCount >= 5) {
+        echo "[$id_biens] $nom - A deja $currentPhotoCount photo(s), maximum atteint\n";
         continue;
     }
     
-    echo "[$id_biens] $nom - Telechargement d'images...\n";
+    echo "[$id_biens] $nom ($currentPhotoCount photos) - Ajout d'images...\n";
     
     // Déterminer le type d'images à télécharger selon le nom
     $nomLower = strtolower($nom);
@@ -116,11 +117,14 @@ foreach ($biens as $bien) {
         $category = 'house';
     }
     
-    // Télécharger 2-3 images par bien
-    $imagesToDownload = array_slice($freeImages[$category], 0, 3);
+    // Télécharger jusqu'à 5 images par bien (en tenant compte des existantes)
+    $maxToDownload = 5 - $currentPhotoCount;
+    $imagesToDownload = array_slice($freeImages[$category], 0, min(2, $maxToDownload));
     
-    // Ajouter une image d'intérieur
-    $imagesToDownload[] = $freeImages['interior'][array_rand($freeImages['interior'])];
+    // Ajouter une image d'intérieur si on a de la place
+    if (count($imagesToDownload) < $maxToDownload) {
+        $imagesToDownload[] = $freeImages['interior'][array_rand($freeImages['interior'])];
+    }
     
     foreach ($imagesToDownload as $index => $imageUrl) {
         try {
