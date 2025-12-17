@@ -15,6 +15,36 @@ $userId = intval($_SESSION['user_id']);
 $userName = $_SESSION['user_name'] ?? '';
 
 try {
+    // Mise à jour du profil utilisateur
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
+        $email = trim($_POST['email'] ?? '');
+        $nom = trim($_POST['nom'] ?? '');
+        $prenom = trim($_POST['prenom'] ?? '');
+        $tel = trim($_POST['tel'] ?? '');
+        $date_naissance = trim($_POST['date_naissance'] ?? '');
+        $adresse = trim($_POST['adresse'] ?? '');
+        $complement = trim($_POST['complement'] ?? '');
+        $commune = trim($_POST['commune'] ?? '');
+        // RGPD must be checked
+        if (!isset($_POST['rgpd'])) {
+            $message = 'Vous devez accepter la politique de confidentialité.';
+            $messageType = 'error';
+        } else if (empty($email) || empty($nom) || empty($prenom) || empty($tel) || empty($date_naissance) || empty($adresse) || empty($commune)) {
+            $message = 'Merci de remplir tous les champs obligatoires.';
+            $messageType = 'error';
+        } else {
+            $locClass = new Locataire(null, null, null, null, null, null, null, null, null, $pdo);
+            // Met à jour tous les champs du profil, sauf pseudo
+            $locClass->updateLocataire($userId, $nom, $prenom, null, $email, $tel, $date_naissance, null, $adresse, $complement, null, null, null);
+            // Met à jour la commune si besoin (à adapter selon ta structure)
+            $stmt = $pdo->prepare('UPDATE Locataire SET commune = ? WHERE id_locataire = ?');
+            $stmt->execute([$commune, $userId]);
+            $message = 'Profil mis à jour avec succès.';
+            // Rafraîchir les données utilisateur
+            $userData = $locClass->getLocataireById($userId);
+        }
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_reservation'])) {
         $id_reservation = intval($_POST['id_reservation'] ?? 0);
         if ($id_reservation > 0) {
@@ -52,7 +82,7 @@ try {
                 }
             }
             if ($authenticated) {
-                $locClass->updateLocataire($userId, null, null, null, null, null, $new, null, null);
+                $locClass->updateLocataire($userId, null, null, null, null, null, $new, null, null, null);
                 $message = 'Mot de passe mis à jour.';
             } else {
                 $message = 'Mot de passe actuel incorrect.';
@@ -78,30 +108,44 @@ try {
 
     // Fetch user's favorites
     $userFavoris = [];
+    $debugFavorisRows = [];
+    $debugBienRow = [];
+    $favorisQuery = "
+         SELECT b.*, f.date_ajout as date_favori,
+             c.nom_commune,
+             tb.designation_type_bien as type_bien,
+               (SELECT lien_photo FROM Photos WHERE id_biens = b.id_biens LIMIT 1) as photo,
+               (SELECT AVG(rating) FROM reviews WHERE id_biens = b.id_biens) as note_moyenne,
+               (SELECT COUNT(*) FROM reviews WHERE id_biens = b.id_biens) as nb_avis
+        FROM Favoris f
+        JOIN Biens b ON f.id_biens = b.id_biens
+        LEFT JOIN Commune c ON b.id_commune = c.id_commune
+        LEFT JOIN Type_Bien tb ON b.id_type_biens = tb.id_type_biens
+        WHERE f.id_locataire = ? AND b.validated = 1
+        ORDER BY f.date_ajout DESC
+        LIMIT 6
+    ";
+    $favorisStmt = $pdo->prepare($favorisQuery);
+    $ok = $favorisStmt->execute([$userId]);
+    $userFavoris = $favorisStmt->fetchAll(PDO::FETCH_ASSOC);
+    $favorisError = $ok ? null : $favorisStmt->errorInfo();
+    // Debug Favoris bruts et Bien favori
     try {
-        $favorisStmt = $pdo->prepare("
-            SELECT b.*, f.date_ajout as date_favori,
-                   c.nom_commune, c.code_postal,
-                   tb.nom_type_biens as type_bien,
-                   (SELECT lien_photo FROM Photos WHERE id_biens = b.id_biens LIMIT 1) as photo,
-                   (SELECT AVG(note) FROM Avis WHERE id_biens = b.id_biens AND valider = 1) as note_moyenne,
-                   (SELECT COUNT(*) FROM Avis WHERE id_biens = b.id_biens AND valider = 1) as nb_avis
-            FROM Favoris f
-            JOIN Biens b ON f.id_biens = b.id_biens
-            LEFT JOIN Commune c ON b.id_commune = c.id_commune
-            LEFT JOIN Type_Biens tb ON b.id_type_biens = tb.id_type_biens
-            WHERE f.id_locataire = ?
-            ORDER BY f.date_ajout DESC
-            LIMIT 6
-        ");
-        $favorisStmt->execute([$userId]);
-        $userFavoris = $favorisStmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        // Table might not exist yet
-    }
+        $debugFavoris = $pdo->prepare("SELECT * FROM Favoris WHERE id_locataire = ? ORDER BY date_ajout DESC LIMIT 6");
+        $debugFavoris->execute([$userId]);
+        $debugFavorisRows = $debugFavoris->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($debugFavorisRows[0]['id_biens'])) {
+            $debugBien = $pdo->prepare("SELECT * FROM Biens WHERE id_biens = ?");
+            $debugBien->execute([$debugFavorisRows[0]['id_biens']]);
+            $debugBienRow = $debugBien->fetch(PDO::FETCH_ASSOC);
+        }
+    } catch (PDOException $e) {}
 
     // Fetch user data for profile form
-    $locClass = new Locataire(null, null, null, null, null, null, null, null, null, $pdo);
+    $locClass = new Locataire(null, null, null, null, null, null, null, null, null, null, $pdo);
+    if (!$pdo) {
+        require_once __DIR__ . '/../config/db.php';
+    }
     $userData = $locClass->getLocataireById($userId);
 
 } catch (Exception $e) {
@@ -769,8 +813,15 @@ try {
         <div class="profile-header">
             <div class="profile-avatar">👤</div>
             <div class="profile-info">
-                <h1><?= htmlspecialchars($userData['prenom'] ?? '') ?> <?= htmlspecialchars($userData['nom'] ?? '') ?></h1>
-                <p>@<?= htmlspecialchars($userData['pseudo'] ?? 'utilisateur') ?></p>
+                <h1><?php
+                    if (empty($userData['nom_locataire']) || empty($userData['prenom_locataire'])) {
+                        echo '<pre style="color:red;">DEBUG $userData: ' . htmlspecialchars(print_r($userData, true)) . '</pre>';
+                    }
+                    echo htmlspecialchars(($userData['nom_locataire'] ?? '') . ' ' . ($userData['prenom_locataire'] ?? ''));
+                ?></h1>
+                <p><?php
+                    echo htmlspecialchars(($userData['nom_locataire'] ?? '') . '.' . ($userData['prenom_locataire'] ?? ''));
+                ?></p>
                 <div class="profile-stats">
                     <div class="stat-item">
                         <span class="stat-number"><?= count($userReservations) ?></span>
@@ -810,13 +861,33 @@ try {
         <div id="tab-favoris" class="tab-content active">
             <section class="profile-section">
                 <h3>❤️ Mes Favoris</h3>
-                <?php if (!empty($userFavoris)): ?>
+                <?php if (empty($userFavoris)) : ?>
+                    <div class="empty-state">
+                        <div class="icon">💔</div>
+                        <p>Vous n'avez pas encore de favoris.<br>Explorez les annonces et ajoutez vos coups de cœur !</p>
+                        <a href="../forms/Annonce.form.php" class="view-all-link">🏠 Découvrir les biens</a>
+                    </div>
+                <?php else : ?>
                     <div class="favoris-grid">
-                        <?php foreach ($userFavoris as $bien): ?>
+                        <?php foreach ($userFavoris as $bien) : ?>
                         <div class="favori-card">
                             <div class="image-container">
                                 <?php if (!empty($bien['photo'])): ?>
-                                    <img src="<?= htmlspecialchars($bien['photo']) ?>" alt="<?= htmlspecialchars($bien['nom_biens']) ?>">
+                                    <?php
+                                    $photoPath = $bien['photo'];
+                                    if (strpos($photoPath, 'http') === 0) {
+                                        // Lien absolu, on ne touche pas
+                                    } else {
+                                        // Supprime le préfixe Projet_HAP(House_After_Party)/ s'il existe
+                                        $photoPath = preg_replace('#^Projet_HAP\(House_After_Party\)/#', '', $photoPath);
+                                        if (strpos($photoPath, 'images/uploads/') === 0) {
+                                            $photoPath = '../' . ltrim($photoPath, '/');
+                                        } else {
+                                            $photoPath = '../images/uploads/' . ltrim($photoPath, '/');
+                                        }
+                                    }
+                                    ?>
+                                <img src="<?= htmlspecialchars($photoPath) ?>" alt="<?= htmlspecialchars($bien['nom_biens']) ?>">
                                 <?php else: ?>
                                     <div class="no-image">🏠</div>
                                 <?php endif; ?>
@@ -850,12 +921,6 @@ try {
                         <?php endforeach; ?>
                     </div>
                     <a href="../forms/mes_favoris.php" class="view-all-link">Voir tous mes favoris →</a>
-                <?php else: ?>
-                    <div class="empty-state">
-                        <div class="icon">💔</div>
-                        <p>Vous n'avez pas encore de favoris.<br>Explorez les annonces et ajoutez vos coups de cœur !</p>
-                        <a href="../forms/Annonce.form.php" class="view-all-link">🏠 Découvrir les biens</a>
-                    </div>
                 <?php endif; ?>
             </section>
         </div>
@@ -974,11 +1039,6 @@ try {
                 <form method="post" class="profile-edit-form">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="pseudo">Pseudo</label>
-                            <input type="text" id="pseudo" name="pseudo" value="<?= htmlspecialchars($userData['pseudo'] ?? '') ?>" maxlength="30" pattern="^[a-zA-Z0-9_\-]{3,30}$" required>
-                            <small>3 à 30 caractères, lettres, chiffres, tirets, underscores.</small>
-                        </div>
-                        <div class="form-group">
                             <label for="email">Email</label>
                             <input type="email" id="email" name="email" value="<?= htmlspecialchars($userData['email'] ?? '') ?>" maxlength="100" required>
                         </div>
@@ -1005,12 +1065,12 @@ try {
                     </div>
                     <div class="form-group">
                         <label for="adresse">Adresse</label>
-                        <input type="text" id="adresse" name="adresse" value="<?= htmlspecialchars($userData['adresse'] ?? '') ?>" maxlength="100" required>
+                        <input type="text" id="adresse" name="adresse" value="<?= htmlspecialchars($userData['adresse'] ?? '') ?>" maxlength="100" required autocomplete="street-address">
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="complement">Complément d'adresse</label>
-                            <input type="text" id="complement" name="complement" value="<?= htmlspecialchars($userData['complement'] ?? '') ?>" maxlength="100">
+                            <input type="text" id="complement" name="complement" value="<?= htmlspecialchars($userData['complement'] ?? '') ?>" maxlength="100" autocomplete="address-line2">
                         </div>
                         <div class="form-group">
                             <label for="commune">Commune</label>

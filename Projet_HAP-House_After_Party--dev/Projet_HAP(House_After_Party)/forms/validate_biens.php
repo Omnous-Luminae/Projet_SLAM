@@ -15,10 +15,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id_animateur = $_SESSION['user_id'];
         
         if ($action === 'validate') {
-            $stmt = $pdo->prepare("UPDATE Biens SET validated = TRUE, validated_by = ?, validated_at = NOW() WHERE id_biens = ?");
-            $stmt->execute([$id_animateur, $id_biens]);
-            $message = "Bien validé avec succès !";
-            $messageClass = "success";
+                        // Correction : forcer validated=1 (pas TRUE qui peut être mal interprété en SQL), validated_by et validated_at
+                        $stmt = $pdo->prepare("UPDATE Biens SET validated = 1, validated_by = ?, validated_at = NOW() WHERE id_biens = ?");
+                        $stmt->execute([$id_animateur, $id_biens]);
+                        $message = "Bien validé avec succès !";
+                        $messageClass = "success";
         } elseif ($action === 'reject' || $action === 'delete') {
             try {
                 // Récupérer et supprimer les fichiers photos

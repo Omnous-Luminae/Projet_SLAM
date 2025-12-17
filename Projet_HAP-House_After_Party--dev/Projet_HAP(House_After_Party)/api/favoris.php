@@ -90,9 +90,15 @@ switch ($action) {
         try {
             $stmt = $pdo->prepare("
                 SELECT b.*, f.date_ajout as date_favori,
-                       (SELECT lien_photo FROM Photos WHERE id_biens = b.id_biens LIMIT 1) as photo
+                       c.nom_commune, c.code_postal,
+                       tb.nom_type_biens as type_bien,
+                       (SELECT lien_photo FROM Photos WHERE id_biens = b.id_biens LIMIT 1) as photo,
+                       (SELECT AVG(note) FROM Avis WHERE id_biens = b.id_biens AND valider = 1) as note_moyenne,
+                       (SELECT COUNT(*) FROM Avis WHERE id_biens = b.id_biens AND valider = 1) as nb_avis
                 FROM Favoris f
                 JOIN Biens b ON f.id_biens = b.id_biens
+                LEFT JOIN Commune c ON b.id_commune = c.id_commune
+                LEFT JOIN Type_Biens tb ON b.id_type_biens = tb.id_type_biens
                 WHERE f.id_locataire = ?
                 ORDER BY f.date_ajout DESC
             ");

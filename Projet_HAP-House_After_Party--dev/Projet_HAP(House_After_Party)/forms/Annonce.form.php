@@ -247,6 +247,12 @@ try {
         }
 
         // ÉTAPE 1: Récupérer TOUS les biens (sans pagination pour permettre le filtrage)
+        // Toujours filtrer sur les biens validés
+        if (empty($whereClause)) {
+            $whereClause = ' WHERE b.validated = 1';
+        } else {
+            $whereClause .= ' AND b.validated = 1';
+        }
         $query = "SELECT b.*, c.nom_commune, t.designation_type_bien FROM Biens b LEFT JOIN Commune c ON b.id_commune = c.id_commune LEFT JOIN Type_Bien t ON b.id_type_biens = t.id_type_biens $whereClause ORDER BY b.id_biens DESC";
         $stmt = $pdo->prepare($query);
         $stmt->execute($params);

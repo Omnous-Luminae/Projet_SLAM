@@ -46,12 +46,15 @@ const FavorisManager = {
                     button.innerHTML = '🤍';
                     this.showToast('Retiré des favoris');
                 }
-                
                 // Animation du bouton
                 button.style.transform = 'scale(1.3)';
                 setTimeout(() => {
                     button.style.transform = 'scale(1)';
                 }, 200);
+                // Rafraîchir la liste des favoris dans le profil si présente
+                if (document.getElementById('tab-favoris')) {
+                    FavorisManager.refreshProfileFavoris();
+                }
             } else if (data.login_required) {
                 // Rediriger vers la connexion
                 if (confirm('Vous devez être connecté pour ajouter des favoris. Voulez-vous vous connecter ?')) {
@@ -64,6 +67,41 @@ const FavorisManager = {
         .catch(error => {
             this.showToast('Erreur de connexion', true);
         });
+    },
+
+    refreshProfileFavoris: function() {
+        // Appel AJAX pour récupérer la liste à jour
+        fetch('../api/favoris.php?action=list')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && document.getElementById('tab-favoris')) {
+                    const container = document.querySelector('#tab-favoris .favoris-grid');
+                    if (!container) return;
+                    // Nettoyer
+                    container.innerHTML = '';
+                    if (data.favoris.length === 0) {
+                        container.innerHTML = '<div class="empty-state"><div class="icon">💔</div><p>Vous n\'avez pas encore de favoris.<br>Explorez les annonces et ajoutez vos coups de cœur !</p><a href="../forms/Annonce.form.php" class="view-all-link">🏠 Découvrir les biens</a></div>';
+                    } else {
+                        data.favoris.slice(0, 6).forEach(function(bien) {
+                            const card = document.createElement('div');
+                            card.className = 'favori-card';
+                            card.innerHTML = `
+                                <div class="image-container">
+                                    ${bien.photo ? `<img src="${bien.photo}" alt="${bien.nom_biens}">` : '<div class="no-image">🏠</div>'}
+                                    ${bien.type_bien ? `<span class="badge">${bien.type_bien}</span>` : ''}
+                                    <span class="heart-icon">❤️</span>
+                                </div>
+                                <div class="content">
+                                    <h4 class="title"><a href="../forms/annonce_detail.php?id=${bien.id_biens}">${bien.nom_biens}</a></h4>
+                                    <div class="location">📍 ${bien.nom_commune || 'Non spécifié'}${bien.code_postal ? ` (${bien.code_postal})` : ''}</div>
+                                    <div class="rating">${'⭐'.repeat(Math.round(bien.note_moyenne || 0))}${'☆'.repeat(5 - Math.round(bien.note_moyenne || 0))} <span style="color: var(--text-secondary); font-size: 0.85em;">(${bien.nb_avis || 0} avis)</span></div>
+                                </div>
+                            `;
+                            container.appendChild(card);
+                        });
+                    }
+                }
+            });
     },
 
     showToast: function(message, isError = false) {
