@@ -46,7 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
 
         if ($email !== '' && $password !== '') {
             if ($pdo) {
-                $locataireObj = new Locataire(null, null, null, $email, null, null, null, null, null, $pdo);
+                // Respecter l'ordre du constructeur : id, nom, prenom, pseudo, email, tel, date_naissance, mdp, rue, complement, pdo
+                $locataireObj = new Locataire(null, null, null, null, $email, null, null, null, null, null, $pdo);
                 $locataire = $locataireObj->authenticateLocataire($email, $password);
                 
                 if ($locataire) {

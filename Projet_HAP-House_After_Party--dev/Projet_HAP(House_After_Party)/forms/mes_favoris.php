@@ -6,12 +6,14 @@ session_start();
 require_once __DIR__ . '/../config/db.php';
 
 // Redirection si non connecté
-if (!isset($_SESSION['locataire_id'])) {
+if (isset($_SESSION['user_id'])) {
+    $locataireId = $_SESSION['user_id'];
+} elseif (isset($_SESSION['locataire_id'])) {
+    $locataireId = $_SESSION['locataire_id'];
+} else {
     header('Location: ../auth/connexion.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
     exit;
 }
-
-$locataireId = $_SESSION['locataire_id'];
 
 // Créer la table si nécessaire
 try {
@@ -28,20 +30,20 @@ try {
     // OK
 }
 
-// Récupérer les favoris
+// Récupérer les favoris (même logique que profil)
 try {
     $stmt = $pdo->prepare("
         SELECT b.*, f.date_ajout as date_favori,
-               c.nom_commune, c.code_postal,
-               tb.nom_type_biens as type_bien,
+               c.nom_commune,
+               tb.designation_type_bien as type_bien,
                (SELECT lien_photo FROM Photos WHERE id_biens = b.id_biens LIMIT 1) as photo,
-               (SELECT AVG(note) FROM Avis WHERE id_biens = b.id_biens AND valider = 1) as note_moyenne,
-               (SELECT COUNT(*) FROM Avis WHERE id_biens = b.id_biens AND valider = 1) as nb_avis
+               (SELECT AVG(rating) FROM reviews WHERE id_biens = b.id_biens) as note_moyenne,
+               (SELECT COUNT(*) FROM reviews WHERE id_biens = b.id_biens) as nb_avis
         FROM Favoris f
         JOIN Biens b ON f.id_biens = b.id_biens
         LEFT JOIN Commune c ON b.id_commune = c.id_commune
-        LEFT JOIN Type_Biens tb ON b.id_type_biens = tb.id_type_biens
-        WHERE f.id_locataire = ?
+        LEFT JOIN Type_Bien tb ON b.id_type_biens = tb.id_type_biens
+        WHERE f.id_locataire = ? AND b.validated = 1
         ORDER BY f.date_ajout DESC
     ");
     $stmt->execute([$locataireId]);
@@ -392,7 +394,21 @@ try {
             <div class="favorite-card" data-bien-id="<?= $bien['id_biens'] ?>">
                 <div class="image-container">
                     <?php if (!empty($bien['photo'])): ?>
-                        <img src="<?= htmlspecialchars($bien['photo']) ?>" alt="<?= htmlspecialchars($bien['nom_biens']) ?>">
+                        <?php
+                        $photoPath = $bien['photo'];
+                        if (strpos($photoPath, 'http') === 0) {
+                            // Lien absolu, on ne touche pas
+                        } else {
+                            // Supprime le préfixe Projet_HAP(House_After_Party)/ s'il existe
+                            $photoPath = preg_replace('#^Projet_HAP\(House_After_Party\)/#', '', $photoPath);
+                            if (strpos($photoPath, 'images/uploads/') === 0) {
+                                $photoPath = '../' . ltrim($photoPath, '/');
+                            } else {
+                                $photoPath = '../images/uploads/' . ltrim($photoPath, '/');
+                            }
+                        }
+                        ?>
+                        <img src="<?= htmlspecialchars($photoPath) ?>" alt="<?= htmlspecialchars($bien['nom_biens']) ?>">
                     <?php else: ?>
                         <div class="no-image">🏠</div>
                     <?php endif; ?>
