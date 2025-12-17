@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Ajout colonne pseudo à Locataire",
+			"type": "shell",
+			"command": "mysql -u root -p -e \"ALTER TABLE Locataire ADD COLUMN pseudo VARCHAR(30) AFTER id_locataire;\" Project_HAP",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

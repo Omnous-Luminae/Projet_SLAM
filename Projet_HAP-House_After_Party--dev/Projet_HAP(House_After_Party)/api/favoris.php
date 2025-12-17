@@ -10,12 +10,12 @@ require_once __DIR__ . '/../config/db.php';
 header('Content-Type: application/json');
 
 // Vérifier que l'utilisateur est connecté
-if (!isset($_SESSION['locataire_id'])) {
+if (!isset($_SESSION['user_id']) && !isset($_SESSION['locataire_id'])) {
     echo json_encode(['success' => false, 'error' => 'Non connecté', 'login_required' => true]);
     exit;
 }
 
-$locataireId = $_SESSION['locataire_id'];
+$locataireId = $_SESSION['user_id'] ?? $_SESSION['locataire_id'];
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 // Créer la table si elle n'existe pas
