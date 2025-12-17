@@ -237,7 +237,7 @@ try {
         
         .favorite-card .heart-btn {
             position: absolute;
-            top: 15px;
+            top: 55px;
             right: 15px;
             width: 40px;
             height: 40px;

@@ -423,7 +423,12 @@ if (isset($_SESSION['user_id'])) {
         <?php endif; ?>
 
         <div class="annonce-header">
-            <h1 class="annonce-title"><?= htmlspecialchars($bien['nom_biens']) ?></h1>
+            <div class="annonce-header-top">
+                <h1 class="annonce-title"><?= htmlspecialchars($bien['nom_biens']) ?></h1>
+                <?php if (isset($_SESSION['user_id'])): ?>
+                <button class="favorite-btn-detail" data-bien-id="<?= $bien['id_biens'] ?>" onclick="FavorisManager.toggle(<?= $bien['id_biens'] ?>, this)" title="Ajouter aux favoris">🤍</button>
+                <?php endif; ?>
+            </div>
             <p class="annonce-location"><?= htmlspecialchars($bien['nom_commune']) ?>, <?= htmlspecialchars($bien['rue_biens']) ?></p>
         </div>
 
@@ -478,6 +483,51 @@ if (isset($_SESSION['user_id'])) {
             </div>
             
             <style>
+                /* Favorite button styles */
+                .annonce-header-top {
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    justify-content: space-between;
+                    flex-wrap: wrap;
+                }
+                
+                .favorite-btn-detail {
+                    background: linear-gradient(135deg, rgba(161, 0, 184, 0.1), rgba(102, 126, 234, 0.1));
+                    border: 2px solid rgba(161, 0, 184, 0.3);
+                    font-size: 1.8em;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    padding: 10px 15px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-width: 55px;
+                }
+                
+                .favorite-btn-detail:hover {
+                    transform: scale(1.1);
+                    background: linear-gradient(135deg, rgba(161, 0, 184, 0.2), rgba(102, 126, 234, 0.2));
+                    border-color: #a100b8;
+                    box-shadow: 0 4px 15px rgba(161, 0, 184, 0.3);
+                }
+                
+                .favorite-btn-detail.active {
+                    background: linear-gradient(135deg, #a100b8, #667eea);
+                    border-color: transparent;
+                    color: white;
+                }
+                
+                @keyframes heartPulse {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.3); }
+                }
+                
+                .favorite-btn-detail.active {
+                    animation: heartPulse 0.4s ease;
+                }
+                
                 .modern-gallery {
                     margin: 25px 0;
                     border-radius: 16px;
@@ -1493,6 +1543,17 @@ if (isset($_SESSION['user_id'])) {
             calendar.render();
         });
     </script>
+    
+    <!-- Favoris script -->
+    <script src="../js/favoris.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof FavorisManager !== 'undefined') {
+                FavorisManager.init();
+            }
+        });
+    </script>
+    
     <?php include '../../theme_toggle.php'; ?>
 </body>
 </html>

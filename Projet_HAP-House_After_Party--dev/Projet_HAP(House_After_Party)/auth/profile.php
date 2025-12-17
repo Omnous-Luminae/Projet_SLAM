@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 
 $pdo = $pdo ?? null;
 $message = '';
+$messageType = 'success';
 $userId = intval($_SESSION['user_id']);
 $userName = $_SESSION['user_name'] ?? '';
 
@@ -29,6 +30,7 @@ try {
         $confirm = trim($_POST['confirm_password'] ?? '');
         if ($new !== $confirm) {
             $message = 'Le nouveau mot de passe et la confirmation ne correspondent pas.';
+            $messageType = 'error';
         } else {
             // Verify current password using same logic as authenticateLocataire
             $locClass = new Locataire(null, null, null, null, null, null, null, null, null, $pdo);
@@ -54,6 +56,7 @@ try {
                 $message = 'Mot de passe mis à jour.';
             } else {
                 $message = 'Mot de passe actuel incorrect.';
+                $messageType = 'error';
             }
         }
     }
@@ -73,12 +76,37 @@ try {
     $reviewsStmt->execute([$userId]);
     $userReviews = $reviewsStmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Fetch user's favorites
+    $userFavoris = [];
+    try {
+        $favorisStmt = $pdo->prepare("
+            SELECT b.*, f.date_ajout as date_favori,
+                   c.nom_commune, c.code_postal,
+                   tb.nom_type_biens as type_bien,
+                   (SELECT lien_photo FROM Photos WHERE id_biens = b.id_biens LIMIT 1) as photo,
+                   (SELECT AVG(note) FROM Avis WHERE id_biens = b.id_biens AND valider = 1) as note_moyenne,
+                   (SELECT COUNT(*) FROM Avis WHERE id_biens = b.id_biens AND valider = 1) as nb_avis
+            FROM Favoris f
+            JOIN Biens b ON f.id_biens = b.id_biens
+            LEFT JOIN Commune c ON b.id_commune = c.id_commune
+            LEFT JOIN Type_Biens tb ON b.id_type_biens = tb.id_type_biens
+            WHERE f.id_locataire = ?
+            ORDER BY f.date_ajout DESC
+            LIMIT 6
+        ");
+        $favorisStmt->execute([$userId]);
+        $userFavoris = $favorisStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Table might not exist yet
+    }
+
     // Fetch user data for profile form
     $locClass = new Locataire(null, null, null, null, null, null, null, null, null, $pdo);
     $userData = $locClass->getLocataireById($userId);
 
 } catch (Exception $e) {
     $message = 'Erreur: ' . $e->getMessage();
+    $messageType = 'error';
 }
 
 ?>
@@ -86,233 +114,960 @@ try {
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>Profil</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Profil - House After Party</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../Css/style.css">
     <link rel="stylesheet" href="../Css/profile.css">
     <style>
-    .profile-edit-form {
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 2px 12px rgba(161,0,184,0.07);
-        padding: 32px 24px 24px 24px;
-        max-width: 480px;
-        margin: 32px auto 24px auto;
-        border: 1px solid #f3e6fa;
+    * { box-sizing: border-box; }
+    
+    :root {
+        --primary: #667eea;
+        --primary-dark: #5a67d8;
+        --secondary: #764ba2;
+        --accent: #a100b8;
+        --bg-primary: #f8fafc;
+        --bg-card: #ffffff;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --error: #ef4444;
+        --warning: #f59e0b;
     }
-    .profile-edit-form .form-group {
-        margin-bottom: 18px;
+    
+    [data-theme="dark"] {
+        --bg-primary: #0f172a;
+        --bg-card: #1e293b;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --border-color: #334155;
     }
-    .profile-edit-form label {
-        font-weight: 600;
-        color: #a100b8;
-        display: block;
-        margin-bottom: 6px;
+    
+    body {
+        font-family: 'Montserrat', sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
     }
-    .profile-edit-form input[type="text"],
-    .profile-edit-form input[type="email"],
-    .profile-edit-form input[type="tel"],
-    .profile-edit-form input[type="date"] {
+    
+    .profile-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 30px 20px;
+    }
+    
+    .profile-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        border-radius: 20px;
+        padding: 40px;
+        margin-bottom: 30px;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
         width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #d1b3e0;
-        border-radius: 6px;
-        font-size: 1em;
-        background: #faf7fc;
-        transition: border 0.2s;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        pointer-events: none;
     }
-    .profile-edit-form input:focus {
-        border-color: #a100b8;
-        outline: none;
-        background: #fff;
+    
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3em;
+        border: 4px solid rgba(255,255,255,0.3);
+        flex-shrink: 0;
     }
-    .profile-edit-form small {
-        color: #888;
-        font-size: 0.92em;
-        margin-top: 2px;
+    
+    .profile-info h1 {
+        margin: 0 0 10px 0;
+        font-size: 2em;
+        font-weight: 700;
+    }
+    
+    .profile-info p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 1.1em;
+    }
+    
+    .profile-stats {
+        display: flex;
+        gap: 30px;
+        margin-top: 20px;
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-number {
+        font-size: 1.8em;
+        font-weight: 700;
         display: block;
     }
-    .profile-edit-form button.profile-button {
-        background: linear-gradient(90deg, #a100b8 60%, #e0aaff 100%);
-        color: #fff;
+    
+    .stat-label {
+        font-size: 0.85em;
+        opacity: 0.8;
+    }
+    
+    .back-link {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        color: white;
+        text-decoration: none;
+        background: rgba(255,255,255,0.2);
+        padding: 10px 20px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s;
+        backdrop-filter: blur(5px);
+    }
+    
+    .back-link:hover {
+        background: rgba(255,255,255,0.3);
+        transform: translateY(-2px);
+    }
+    
+    .profile-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+    }
+    
+    .tab-btn {
+        padding: 12px 24px;
         border: none;
-        border-radius: 6px;
-        padding: 12px 28px;
-        font-size: 1.08em;
+        background: var(--bg-card);
+        border-radius: 12px;
         font-weight: 600;
         cursor: pointer;
-        margin-top: 10px;
-        box-shadow: 0 2px 8px rgba(161,0,184,0.08);
-        transition: background 0.2s;
+        transition: all 0.3s;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        font-family: inherit;
     }
-    .profile-edit-form button.profile-button:hover {
-        background: linear-gradient(90deg, #a100b8 80%, #c77dff 100%);
+    
+    .tab-btn:hover, .tab-btn.active {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        border-color: transparent;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
     }
-    .profile-edit-form input[type="checkbox"] {
-        margin-right: 8px;
-        accent-color: #a100b8;
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+        animation: fadeIn 0.4s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .profile-section {
+        background: var(--bg-card);
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        padding: 25px;
+        margin-bottom: 25px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .profile-section h3 {
+        color: var(--text-primary);
+        margin: 0 0 20px 0;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.3em;
+    }
+    
+    .message {
+        padding: 15px 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .message.success {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+        color: var(--success);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    
+    .message.error {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+        color: var(--error);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    
+    /* Favoris Grid */
+    .favoris-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+    
+    .favori-card {
+        background: var(--bg-card);
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+        transition: all 0.3s;
+        position: relative;
+    }
+    
+    .favori-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+    }
+    
+    .favori-card .image-container {
+        height: 160px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .favori-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s;
+    }
+    
+    .favori-card:hover img {
+        transform: scale(1.05);
+    }
+    
+    .favori-card .no-image {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5em;
+    }
+    
+    .favori-card .badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.75em;
+        font-weight: 600;
+    }
+    
+    .favori-card .heart-icon {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        color: #ef4444;
+        font-size: 1.5em;
+    }
+    
+    .favori-card .content {
+        padding: 15px;
+    }
+    
+    .favori-card .title {
+        font-weight: 700;
+        margin-bottom: 5px;
+        font-size: 1em;
+    }
+    
+    .favori-card .title a {
+        color: var(--text-primary);
+        text-decoration: none;
+    }
+    
+    .favori-card .title a:hover {
+        color: var(--primary);
+    }
+    
+    .favori-card .location {
+        color: var(--text-secondary);
+        font-size: 0.85em;
+        margin-bottom: 8px;
+    }
+    
+    .favori-card .rating {
+        color: #fbbf24;
+        font-size: 0.9em;
+    }
+    
+    .view-all-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 600;
+        margin-top: 20px;
+        padding: 10px 20px;
+        border: 2px solid var(--primary);
+        border-radius: 25px;
+        transition: all 0.3s;
+    }
+    
+    .view-all-link:hover {
+        background: var(--primary);
+        color: white;
+    }
+    
+    /* Tables modernes */
+    .modern-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-top: 15px;
+    }
+    
+    .modern-table thead th {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.9em;
+    }
+    
+    .modern-table thead th:first-child {
+        border-radius: 10px 0 0 0;
+    }
+    
+    .modern-table thead th:last-child {
+        border-radius: 0 10px 0 0;
+    }
+    
+    .modern-table tbody tr {
+        transition: all 0.3s;
+    }
+    
+    .modern-table tbody tr:hover {
+        background: rgba(102, 126, 234, 0.05);
+    }
+    
+    .modern-table tbody td {
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+    
+    .modern-table tbody td a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .modern-table tbody td a:hover {
+        text-decoration: underline;
+    }
+    
+    /* Annonces cards */
+    .annonces-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+    
+    .annonce-card {
+        background: var(--bg-card);
+        border-radius: 14px;
+        padding: 20px;
+        border: 1px solid var(--border-color);
+        transition: all 0.3s;
+    }
+    
+    .annonce-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        border-color: var(--primary);
+    }
+    
+    .annonce-card .annonce-title {
+        font-weight: 700;
+        font-size: 1.1em;
+        margin-bottom: 10px;
+    }
+    
+    .annonce-card .annonce-title a {
+        color: var(--text-primary);
+        text-decoration: none;
+    }
+    
+    .annonce-card .annonce-title a:hover {
+        color: var(--primary);
+    }
+    
+    .annonce-card .annonce-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .annonce-card .annonce-actions a,
+    .annonce-card .annonce-actions button {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.9em;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s;
+        cursor: pointer;
+        font-family: inherit;
+    }
+    
+    .annonce-card .annonce-actions a {
+        background: var(--primary);
+        color: white;
+        border: none;
+    }
+    
+    .annonce-card .annonce-actions a:hover {
+        background: var(--primary-dark);
+    }
+    
+    .annonce-card .annonce-actions button {
+        background: transparent;
+        color: var(--error);
+        border: 1px solid var(--error);
+    }
+    
+    .annonce-card .annonce-actions button:hover {
+        background: var(--error);
+        color: white;
+    }
+    
+    /* Reviews */
+    .reviews-list {
+        display: grid;
+        gap: 15px;
+    }
+    
+    .review-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        transition: all 0.3s;
+    }
+    
+    .review-card:hover {
+        border-color: var(--primary);
+    }
+    
+    .review-card .review-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .review-card .bien-name a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .review-card .rating {
+        color: #fbbf24;
+    }
+    
+    .review-card .review-content {
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: 10px;
+    }
+    
+    .review-card .review-date {
+        font-size: 0.85em;
+        color: var(--text-secondary);
+    }
+    
+    /* Forms */
+    .profile-edit-form {
+        max-width: 600px;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        font-size: 0.95em;
+    }
+    
+    .form-group input[type="text"],
+    .form-group input[type="email"],
+    .form-group input[type="tel"],
+    .form-group input[type="date"],
+    .form-group input[type="password"] {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 10px;
+        font-size: 1em;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        transition: all 0.3s;
+        font-family: inherit;
+    }
+    
+    .form-group input:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    }
+    
+    .form-group small {
+        color: var(--text-secondary);
+        font-size: 0.85em;
+        margin-top: 5px;
+        display: block;
+    }
+    
+    .form-group input[type="checkbox"] {
+        margin-right: 10px;
+        accent-color: var(--primary);
+        width: 18px;
+        height: 18px;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        border: none;
+        padding: 14px 30px;
+        border-radius: 10px;
+        font-size: 1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-family: inherit;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-cancel {
+        background: transparent;
+        color: var(--error);
+        border: 2px solid var(--error);
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 0.9em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-family: inherit;
+    }
+    
+    .btn-cancel:hover {
+        background: var(--error);
+        color: white;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-secondary);
+    }
+    
+    .empty-state .icon {
+        font-size: 3em;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+    
+    @media (max-width: 768px) {
+        .profile-header {
+            flex-direction: column;
+            text-align: center;
+            padding: 30px 20px;
+        }
+        
+        .profile-stats {
+            justify-content: center;
+        }
+        
+        .back-link {
+            position: static;
+            margin-top: 20px;
+        }
+        
+        .profile-tabs {
+            justify-content: center;
+        }
+        
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .modern-table {
+            font-size: 0.85em;
+        }
+        
+        .modern-table thead th,
+        .modern-table tbody td {
+            padding: 10px;
+        }
     }
     </style>
 </head>
 <body>
-    <div class="profile-container">
-        <a href="/../index.php" class="back-link">&larr; Accueil</a>
-        <h2>Mon profil</h2>
+    <div class="profile-wrapper">
+        <!-- En-tête du profil -->
+        <div class="profile-header">
+            <div class="profile-avatar">👤</div>
+            <div class="profile-info">
+                <h1><?= htmlspecialchars($userData['prenom'] ?? '') ?> <?= htmlspecialchars($userData['nom'] ?? '') ?></h1>
+                <p>@<?= htmlspecialchars($userData['pseudo'] ?? 'utilisateur') ?></p>
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <span class="stat-number"><?= count($userReservations) ?></span>
+                        <span class="stat-label">Réservations</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number"><?= count($userBiens) ?></span>
+                        <span class="stat-label">Annonces</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number"><?= count($userFavoris) ?></span>
+                        <span class="stat-label">Favoris</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number"><?= count($userReviews) ?></span>
+                        <span class="stat-label">Avis</span>
+                    </div>
+                </div>
+            </div>
+            <a href="/../index.php" class="back-link">← Accueil</a>
+        </div>
+        
         <?php if ($message): ?>
-            <div class="message"><?= htmlspecialchars($message) ?></div>
+            <div class="message <?= $messageType ?>"><?= $messageType === 'success' ? '✓' : '✕' ?> <?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
+        
+        <!-- Onglets de navigation -->
+        <div class="profile-tabs">
+            <button class="tab-btn active" onclick="showTab('favoris')">❤️ Favoris</button>
+            <button class="tab-btn" onclick="showTab('reservations')">📅 Réservations</button>
+            <button class="tab-btn" onclick="showTab('annonces')">🏠 Mes annonces</button>
+            <button class="tab-btn" onclick="showTab('avis')">⭐ Mes avis</button>
+            <button class="tab-btn" onclick="showTab('settings')">⚙️ Paramètres</button>
+        </div>
 
-        <section class="profile-section">
-            <h3>Mes réservations</h3>
-            <?php if (!empty($userReservations)): ?>
-                <div class="reservations-list">
-                    <table style="width:100%;border-collapse:collapse;">
+        <!-- Onglet Favoris -->
+        <div id="tab-favoris" class="tab-content active">
+            <section class="profile-section">
+                <h3>❤️ Mes Favoris</h3>
+                <?php if (!empty($userFavoris)): ?>
+                    <div class="favoris-grid">
+                        <?php foreach ($userFavoris as $bien): ?>
+                        <div class="favori-card">
+                            <div class="image-container">
+                                <?php if (!empty($bien['photo'])): ?>
+                                    <img src="<?= htmlspecialchars($bien['photo']) ?>" alt="<?= htmlspecialchars($bien['nom_biens']) ?>">
+                                <?php else: ?>
+                                    <div class="no-image">🏠</div>
+                                <?php endif; ?>
+                                <?php if (!empty($bien['type_bien'])): ?>
+                                    <span class="badge"><?= htmlspecialchars($bien['type_bien']) ?></span>
+                                <?php endif; ?>
+                                <span class="heart-icon">❤️</span>
+                            </div>
+                            <div class="content">
+                                <h4 class="title">
+                                    <a href="../forms/annonce_detail.php?id=<?= $bien['id_biens'] ?>">
+                                        <?= htmlspecialchars($bien['nom_biens']) ?>
+                                    </a>
+                                </h4>
+                                <div class="location">
+                                    📍 <?= htmlspecialchars($bien['nom_commune'] ?? 'Non spécifié') ?>
+                                    <?php if (!empty($bien['code_postal'])): ?>
+                                        (<?= htmlspecialchars($bien['code_postal']) ?>)
+                                    <?php endif; ?>
+                                </div>
+                                <div class="rating">
+                                    <?php 
+                                    $note = round($bien['note_moyenne'] ?? 0);
+                                    echo str_repeat('⭐', $note);
+                                    echo str_repeat('☆', 5 - $note);
+                                    ?>
+                                    <span style="color: var(--text-secondary); font-size: 0.85em;">(<?= $bien['nb_avis'] ?? 0 ?> avis)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <a href="../forms/mes_favoris.php" class="view-all-link">Voir tous mes favoris →</a>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <div class="icon">💔</div>
+                        <p>Vous n'avez pas encore de favoris.<br>Explorez les annonces et ajoutez vos coups de cœur !</p>
+                        <a href="../forms/Annonce.form.php" class="view-all-link">🏠 Découvrir les biens</a>
+                    </div>
+                <?php endif; ?>
+            </section>
+        </div>
+
+        <!-- Onglet Réservations -->
+        <div id="tab-reservations" class="tab-content">
+            <section class="profile-section">
+                <h3>📅 Mes réservations</h3>
+                <?php if (!empty($userReservations)): ?>
+                    <table class="modern-table">
                         <thead>
-                            <tr style="background:#f3e6fa;">
-                                <th style="padding:8px;border:1px solid #eee;">ID</th>
-                                <th style="padding:8px;border:1px solid #eee;">Bien</th>
-                                <th style="padding:8px;border:1px solid #eee;">Date début</th>
-                                <th style="padding:8px;border:1px solid #eee;">Date fin</th>
-                                <th style="padding:8px;border:1px solid #eee;">Tarif</th>
-                                <th style="padding:8px;border:1px solid #eee;">Actions</th>
+                            <tr>
+                                <th>ID</th>
+                                <th>Bien</th>
+                                <th>Date début</th>
+                                <th>Date fin</th>
+                                <th>Tarif</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                         <?php foreach ($userReservations as $res): ?>
                             <tr>
-                                <td style="padding:8px;border:1px solid #eee;"><?= htmlspecialchars($res['id_reservation']) ?></td>
-                                <td style="padding:8px;border:1px solid #eee;"><a href="../forms/annonce_detail.php?id=<?= $res['id_biens'] ?>"><?= htmlspecialchars($res['nom_biens'] ?? '—') ?></a></td>
-                                <td style="padding:8px;border:1px solid #eee;"><?= htmlspecialchars($res['date_debut_reservation']) ?></td>
-                                <td style="padding:8px;border:1px solid #eee;"><?= htmlspecialchars($res['date_fin_reservation']) ?></td>
-                                <td style="padding:8px;border:1px solid #eee;"><?= isset($res['tarif']) ? number_format($res['tarif'],2) . ' €' : '—' ?></td>
-                                <td style="padding:8px;border:1px solid #eee;">
+                                <td>#<?= htmlspecialchars($res['id_reservation']) ?></td>
+                                <td><a href="../forms/annonce_detail.php?id=<?= $res['id_biens'] ?>"><?= htmlspecialchars($res['nom_biens'] ?? '—') ?></a></td>
+                                <td><?= date('d/m/Y', strtotime($res['date_debut_reservation'])) ?></td>
+                                <td><?= date('d/m/Y', strtotime($res['date_fin_reservation'])) ?></td>
+                                <td><?= isset($res['tarif']) ? number_format($res['tarif'],2) . ' €' : '—' ?></td>
+                                <td>
                                     <form method="post" onsubmit="return confirm('Voulez-vous annuler cette réservation ?');" style="display:inline;">
                                         <input type="hidden" name="id_reservation" value="<?= htmlspecialchars($res['id_reservation']) ?>">
-                                        <button type="submit" name="delete_reservation" class="profile-button">Annuler</button>
+                                        <button type="submit" name="delete_reservation" class="btn-cancel">Annuler</button>
                                     </form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
                     </table>
-                </div>
-            <?php else: ?>
-                <p>Vous n'avez effectué aucune réservation pour le moment.</p>
-            <?php endif; ?>
-        </section>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <div class="icon">📅</div>
+                        <p>Vous n'avez effectué aucune réservation pour le moment.</p>
+                        <a href="../forms/Annonce.form.php" class="view-all-link">🏠 Voir les annonces</a>
+                    </div>
+                <?php endif; ?>
+            </section>
+        </div>
 
-        <section class="profile-section">
-            <h3>Mes annonces</h3>
-            <div class="annonces-list">
-                <?php if (!empty($userBiens)): foreach ($userBiens as $b): ?>
-                    <div class="annonce-card">
-                        <div class="annonce-title">
-                            <a href="../forms/annonce_detail.php?id=<?= $b['id_biens'] ?>" aria-label="Voir l'annonce <?= htmlspecialchars($b['nom_biens']) ?>"><?= htmlspecialchars($b['nom_biens']) ?></a>
+        <!-- Onglet Annonces -->
+        <div id="tab-annonces" class="tab-content">
+            <section class="profile-section">
+                <h3>🏠 Mes annonces</h3>
+                <?php if (!empty($userBiens)): ?>
+                    <div class="annonces-grid">
+                        <?php foreach ($userBiens as $b): ?>
+                        <div class="annonce-card">
+                            <div class="annonce-title">
+                                <a href="../forms/annonce_detail.php?id=<?= $b['id_biens'] ?>"><?= htmlspecialchars($b['nom_biens']) ?></a>
+                            </div>
+                            <div class="annonce-actions">
+                                <a href="../forms/annonce_detail.php?id=<?= $b['id_biens'] ?>">Voir / Éditer</a>
+                                <form method="post" action="../forms/Annonce.form.php" style="display:inline;" onsubmit="return confirm('Voulez-vous vraiment supprimer cette annonce ?');">
+                                    <input type="hidden" name="id_biens" value="<?= $b['id_biens'] ?>">
+                                    <button type="submit" name="delete_bien">Supprimer</button>
+                                </form>
+                            </div>
                         </div>
-                        <div class="annonce-actions">
-                            <a href="../forms/annonce_detail.php?id=<?= $b['id_biens'] ?>" aria-label="Voir et éditer l'annonce <?= htmlspecialchars($b['nom_biens']) ?>">Voir / Éditer</a>
-                            <form method="post" action="../forms/Annonce.form.php" style="display:inline;" onsubmit="return confirm('Voulez-vous vraiment supprimer cette annonce ?');">
-                                <input type="hidden" name="id_biens" value="<?= $b['id_biens'] ?>">
-                                <button type="submit" name="delete_bien">Supprimer</button>
-                            </form>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <div class="icon">🏠</div>
+                        <p>Vous n'avez posté aucune annonce pour le moment.</p>
+                        <a href="../forms/Annonce.form.php" class="view-all-link">➕ Créer une annonce</a>
+                    </div>
+                <?php endif; ?>
+            </section>
+        </div>
+
+        <!-- Onglet Avis -->
+        <div id="tab-avis" class="tab-content">
+            <section class="profile-section">
+                <h3>⭐ Mes avis</h3>
+                <?php if (!empty($userReviews)): ?>
+                    <div class="reviews-list">
+                        <?php foreach ($userReviews as $rev): ?>
+                        <div class="review-card">
+                            <div class="review-header">
+                                <span class="bien-name">
+                                    <a href="../forms/annonce_detail.php?id=<?= $rev['id_biens'] ?>">
+                                        <?= htmlspecialchars($rev['nom_biens']) ?>
+                                    </a>
+                                </span>
+                                <span class="rating">
+                                    <?= str_repeat('⭐', intval($rev['rating'])) . str_repeat('☆', 5 - intval($rev['rating'])) ?>
+                                </span>
+                            </div>
+                            <div class="review-content"><?= nl2br(htmlspecialchars($rev['content'])) ?></div>
+                            <div class="review-date">Posté le <?= date('d/m/Y à H:i', strtotime($rev['created_at'])) ?></div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <div class="icon">⭐</div>
+                        <p>Vous n'avez posté aucun avis pour le moment.</p>
+                    </div>
+                <?php endif; ?>
+            </section>
+        </div>
+
+        <!-- Onglet Paramètres -->
+        <div id="tab-settings" class="tab-content">
+            <section class="profile-section">
+                <h3>👤 Modifier mes informations</h3>
+                <form method="post" class="profile-edit-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="pseudo">Pseudo</label>
+                            <input type="text" id="pseudo" name="pseudo" value="<?= htmlspecialchars($userData['pseudo'] ?? '') ?>" maxlength="30" pattern="^[a-zA-Z0-9_\-]{3,30}$" required>
+                            <small>3 à 30 caractères, lettres, chiffres, tirets, underscores.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" value="<?= htmlspecialchars($userData['email'] ?? '') ?>" maxlength="100" required>
                         </div>
                     </div>
-                <?php endforeach; else: ?>
-                    <p>Vous n'avez posté aucune annonce pour le moment.</p>
-                <?php endif; ?>
-            </div>
-        </section>
-
-        <section class="profile-section">
-            <h3>Mes commentaires</h3>
-            <?php if (!empty($userReviews)): ?>
-                <div class="reviews-list">
-                    <?php foreach ($userReviews as $rev): ?>
-                        <div class="review-card" style="border:1px solid #eee;padding:12px;margin-bottom:12px;border-radius:6px;">
-                            <div style="font-weight:600;margin-bottom:6px;">
-                                <a href="../forms/annonce_detail.php?id=<?= $rev['id_biens'] ?>" style="color:#a100b8;text-decoration:none;">
-                                    <?= htmlspecialchars($rev['nom_biens']) ?>
-                                </a>
-                            </div>
-                            <div style="color:#f39c12;margin-bottom:6px;">
-                                <?= str_repeat('★', intval($rev['rating'])) . str_repeat('☆', 5 - intval($rev['rating'])) ?>
-                            </div>
-                            <div style="margin-bottom:6px;"><?= nl2br(htmlspecialchars($rev['content'])) ?></div>
-                            <div style="font-size:0.85em;color:#888;">Posté le <?= htmlspecialchars(date('d-m-Y à H:i', strtotime($rev['created_at']))) ?></div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nom">Nom</label>
+                            <input type="text" id="nom" name="nom" value="<?= htmlspecialchars($userData['nom'] ?? '') ?>" maxlength="50" required>
                         </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php else: ?>
-                <p>Vous n'avez posté aucun commentaire pour le moment.</p>
-            <?php endif; ?>
-        </section>
+                        <div class="form-group">
+                            <label for="prenom">Prénom</label>
+                            <input type="text" id="prenom" name="prenom" value="<?= htmlspecialchars($userData['prenom'] ?? '') ?>" maxlength="50" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tel">Téléphone</label>
+                            <input type="tel" id="tel" name="tel" value="<?= htmlspecialchars($userData['tel'] ?? '') ?>" maxlength="20" pattern="[0-9+\s.-]{8,20}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="date_naissance">Date de naissance</label>
+                            <input type="date" id="date_naissance" name="date_naissance" value="<?= htmlspecialchars($userData['date_naissance'] ?? '') ?>" max="<?= date('Y-m-d', strtotime('-18 years')) ?>" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="adresse">Adresse</label>
+                        <input type="text" id="adresse" name="adresse" value="<?= htmlspecialchars($userData['adresse'] ?? '') ?>" maxlength="100" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="complement">Complément d'adresse</label>
+                            <input type="text" id="complement" name="complement" value="<?= htmlspecialchars($userData['complement'] ?? '') ?>" maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="commune">Commune</label>
+                            <input type="text" id="commune" name="commune" value="<?= htmlspecialchars($userData['commune'] ?? '') ?>" maxlength="100" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <input type="checkbox" id="rgpd" name="rgpd" required>
+                        <label for="rgpd" style="display: inline;">J'accepte la politique de confidentialité et le traitement de mes données personnelles conformément au RGPD.</label>
+                    </div>
+                    <button type="submit" name="update_profile" class="btn-primary">💾 Enregistrer les modifications</button>
+                </form>
+            </section>
 
-        <section class="profile-section">
-            <h3>Modifier mes informations</h3>
-            <form method="post" class="profile-edit-form">
-                <div class="form-group">
-                    <label for="pseudo">Pseudo</label>
-                    <input type="text" id="pseudo" name="pseudo" value="<?= htmlspecialchars($userData['pseudo'] ?? '') ?>" maxlength="30" pattern="^[a-zA-Z0-9_\-]{3,30}$" required>
-                    <small>3 à 30 caractères, lettres, chiffres, tirets, underscores.</small>
-                </div>
-                <div class="form-group">
-                    <label for="nom">Nom</label>
-                    <input type="text" id="nom" name="nom" value="<?= htmlspecialchars($userData['nom'] ?? '') ?>" maxlength="50" required>
-                </div>
-                <div class="form-group">
-                    <label for="prenom">Prénom</label>
-                    <input type="text" id="prenom" name="prenom" value="<?= htmlspecialchars($userData['prenom'] ?? '') ?>" maxlength="50" required>
-                </div>
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" value="<?= htmlspecialchars($userData['email'] ?? '') ?>" maxlength="100" required>
-                </div>
-                <div class="form-group">
-                    <label for="tel">Téléphone</label>
-                    <input type="tel" id="tel" name="tel" value="<?= htmlspecialchars($userData['tel'] ?? '') ?>" maxlength="20" pattern="[0-9+\s.-]{8,20}" required>
-                </div>
-                <div class="form-group">
-                    <label for="date_naissance">Date de naissance</label>
-                    <input type="date" id="date_naissance" name="date_naissance" value="<?= htmlspecialchars($userData['date_naissance'] ?? '') ?>" max="<?= date('Y-m-d', strtotime('-18 years')) ?>" required>
-                </div>
-                <div class="form-group">
-                    <label for="adresse">Adresse</label>
-                    <input type="text" id="adresse" name="adresse" value="<?= htmlspecialchars($userData['adresse'] ?? '') ?>" maxlength="100" required>
-                </div>
-                <div class="form-group">
-                    <label for="complement">Complément d'adresse</label>
-                    <input type="text" id="complement" name="complement" value="<?= htmlspecialchars($userData['complement'] ?? '') ?>" maxlength="100">
-                </div>
-                <div class="form-group">
-                    <label for="commune">Commune</label>
-                    <input type="text" id="commune" name="commune" value="<?= htmlspecialchars($userData['commune'] ?? '') ?>" maxlength="100" required>
-                </div>
-                <div class="form-group">
-                    <input type="checkbox" id="rgpd" name="rgpd" required>
-                    <label for="rgpd">J'accepte la politique de confidentialité et le traitement de mes données personnelles conformément au RGPD.</label>
-                </div>
-                <button type="submit" name="update_profile" class="profile-button">Enregistrer les modifications</button>
-            </form>
-        </section>
-
-        <section class="profile-section">
-            <h3>Changer le mot de passe</h3>
-            <form method="post" class="password-form">
-                <div class="form-group">
-                    <label for="current_password">Mot de passe actuel</label>
-                    <input type="password" id="current_password" name="current_password" required>
-                </div>
-                <div class="form-group">
-                    <label for="new_password">Nouveau mot de passe</label>
-                    <input type="password" id="new_password" name="new_password" required>
-                </div>
-                <div class="form-group">
-                    <label for="confirm_password">Confirmer le nouveau mot de passe</label>
-                    <input type="password" id="confirm_password" name="confirm_password" required>
-                </div>
-                <button type="submit" name="change_password" class="profile-button">Mettre à jour</button>
-            </form>
-        </section>
+            <section class="profile-section">
+                <h3>🔒 Changer le mot de passe</h3>
+                <form method="post" class="profile-edit-form">
+                    <div class="form-group">
+                        <label for="current_password">Mot de passe actuel</label>
+                        <input type="password" id="current_password" name="current_password" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="new_password">Nouveau mot de passe</label>
+                            <input type="password" id="new_password" name="new_password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm_password">Confirmer le mot de passe</label>
+                            <input type="password" id="confirm_password" name="confirm_password" required>
+                        </div>
+                    </div>
+                    <button type="submit" name="change_password" class="btn-primary">🔐 Mettre à jour le mot de passe</button>
+                </form>
+            </section>
+        </div>
     </div>
+    
+    <script>
+    function showTab(tabName) {
+        // Cacher tous les contenus
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Désactiver tous les boutons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Afficher le contenu sélectionné
+        document.getElementById('tab-' + tabName).classList.add('active');
+        
+        // Activer le bouton correspondant
+        event.target.classList.add('active');
+    }
+    </script>
+    
     <?php include '../../theme_toggle.php'; ?>
 </body>
 </html>

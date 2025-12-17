@@ -380,6 +380,9 @@ if (isset($pdo) && $pdo) {
         }
         
         /* Cartes d'annonces */
+        .annonce-card-wrapper {
+            position: relative;
+        }
         .annonce-card {
             display: block;
             text-decoration: none;
@@ -391,6 +394,38 @@ if (isset($pdo) && $pdo) {
         .annonce-rating:hover {
             transform: scale(1.02);
             box-shadow: 0 3px 6px rgba(0,0,0,0.12);
+        }
+        
+        /* Bouton Favori */
+        .favorite-btn {
+            position: absolute;
+            top: 55px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.95);
+            font-size: 1.3rem;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .favorite-btn:hover {
+            transform: scale(1.15);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .favorite-btn.active {
+            animation: heartPulse 0.3s ease;
+        }
+        @keyframes heartPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -1592,6 +1627,8 @@ if (isset($pdo) && $pdo) {
                                     <div class="annonce-footer" style="margin-top:10px; font-size:0.85em; color:#666; border-top:1px solid #eee; padding-top:8px;">Posté par : <?= htmlspecialchars($poster) ?></div>
                                 </div>
                             </a>
+                            <!-- Bouton Favori -->
+                            <button class="favorite-btn" data-bien-id="<?= $b['id_biens'] ?>" onclick="FavorisManager.toggle(<?= $b['id_biens'] ?>, this)" title="Ajouter aux favoris">🤍</button>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -1661,5 +1698,14 @@ if (isset($pdo) && $pdo) {
     <!-- Lightbox JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
     <script src="../js/confirm_delete.js"></script>
+    <script src="../js/favoris.js"></script>
+    <script>
+        // Initialiser les favoris au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof FavorisManager !== 'undefined') {
+                FavorisManager.init();
+            }
+        });
+    </script>
 </body>
 </html>
