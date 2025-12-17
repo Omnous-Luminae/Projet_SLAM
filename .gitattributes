@@ -1,0 +1,3 @@
+# Fix language detection for files misclassified as Hack
+# theme_toggle.php is HTML/CSS/JavaScript, not PHP
+Projet_HAP-House_After_Party--dev/theme_toggle.php linguist-language=HTML
