@@ -1,13 +1,20 @@
 <?php
+session_start();
 require_once __DIR__ . '/../config/db.php';
 
 $message = '';
 
+// Vérifier si l'utilisateur est admin
+$isAdmin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true;
+
 try {
     $pdo = $pdo ?? null;
     if ($pdo) {
-        // Ajout d'un événement
+        // Ajout d'un événement - RESTRICTED TO ADMIN
         if (isset($_POST['add_evenement'])) {
+            if (!$isAdmin) {
+                $message = "Accès refusé. Seuls les administrateurs peuvent créer des événements.";
+            } else {
             $nom = trim($_POST['nom_evenement'] ?? '');
             $date_debut = trim($_POST['date_debut_evenement'] ?? '');
             $date_fin = trim($_POST['date_fin_evenement'] ?? '');
@@ -25,11 +32,15 @@ try {
             } else {
                 $message = "Veuillez remplir tous les champs obligatoires.";
             }
+            }
         }
 
-        // Modification d'un événement
+        // Modification d'un événement - RESTRICTED TO ADMIN
         if (isset($_POST['edit_evenement']) && isset($_POST['id_evenement'])) {
-            $id = intval($_POST['id_evenement']);
+            if (!$isAdmin) {
+                $message = "Accès refusé. Seuls les administrateurs peuvent modifier les événements.";
+            } else {
+                $id = intval($_POST['id_evenement']);
             $nom = trim($_POST['nom_evenement_edit'] ?? '');
             $date_debut = trim($_POST['date_debut_evenement_edit'] ?? '');
             $date_fin = trim($_POST['date_fin_evenement_edit'] ?? '');
@@ -47,14 +58,19 @@ try {
             } else {
                 $message = "Veuillez remplir tous les champs obligatoires.";
             }
+            }
         }
 
-        // Suppression d'un événement
+        // Suppression d'un événement - RESTRICTED TO ADMIN
         if (isset($_POST['delete_evenement']) && isset($_POST['id_evenement'])) {
-            $id = intval($_POST['id_evenement']);
+            if (!$isAdmin) {
+                $message = "Accès refusé. Seuls les administrateurs peuvent supprimer les événements.";
+            } else {
+                $id = intval($_POST['id_evenement']);
             $stmt = $pdo->prepare('DELETE FROM Evenement WHERE id_evenement = ?');
             $stmt->execute([$id]);
             $message = "Événement supprimé avec succès.";
+            }
         }
 
         // Récupération des événements
@@ -541,7 +557,8 @@ try {
         </div>
 
         <div class="content-grid">
-            <!-- Form Card -->
+            <!-- Form Card - Only for admin -->
+            <?php if ($isAdmin): ?>
             <div class="form-card">
                 <h2>➕ Nouvel Événement</h2>
                 <form method="POST">
@@ -591,6 +608,19 @@ try {
                     </button>
                 </form>
             </div>
+            <?php else: ?>
+            <div class="form-card">
+                <h2>ℹ️ Accès limité</h2>
+                <div style="padding: 30px; text-align: center;">
+                    <p style="color: #64748b; font-size: 1.1em; margin-bottom: 20px;">
+                        🔒 Seuls les administrateurs peuvent créer, modifier ou supprimer des événements.
+                    </p>
+                    <p style="color: #94a3b8; font-size: 0.95em;">
+                        Vous avez accès en lecture seule. Contactez un administrateur pour créer un événement.
+                    </p>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <!-- Events List -->
             <div>
@@ -637,6 +667,7 @@ try {
                                 </div>
 
                                 <div class="event-actions">
+                                    <?php if ($isAdmin): ?>
                                     <button class="btn btn-edit" onclick="editEvent(<?= $e['id_evenement'] ?>)">
                                         ✏️ Modifier
                                     </button>
@@ -647,6 +678,11 @@ try {
                                             🗑️ Supprimer
                                         </button>
                                     </form>
+                                    <?php else: ?>
+                                    <div style="padding: 10px; color: #94a3b8; font-size: 0.9em;">
+                                        📖 Accès lecture seule (administrateur requis pour modifier)
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <!-- Edit Form (hidden) -->

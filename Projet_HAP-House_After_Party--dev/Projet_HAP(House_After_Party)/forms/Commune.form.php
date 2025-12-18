@@ -94,14 +94,19 @@ try {
 
         <section class="data-section">
             <h3>Liste des Communes (Page <?= $page ?> sur <?= $totalPages ?>)</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1em;">
+                <input type="text" id="searchCommune" placeholder="🔍 Rechercher une commune..." style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; width: 300px;">
+                <a href="#form-section" class="btn btn-primary" style="font-size: 0.95em;">+ Ajouter une commune</a>
+            </div>
             <div class="data-table-container">
-                <table class="data-table">
+                <table class="data-table" id="communeTable">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>Code INSEE</th>
                             <th>Nom</th>
                             <th>Code Postal</th>
+                            <th style="text-align:center;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -111,6 +116,13 @@ try {
                                 <td><?= htmlspecialchars($c['code_insee']) ?></td>
                                 <td><?= htmlspecialchars($c['nom_commune']) ?></td>
                                 <td><?= htmlspecialchars($c['cp_commune']) ?></td>
+                                <td class="actions" style="text-align:center;">
+                                    <a href="?edit_id=<?= $c['id_commune'] ?>#form-section" class="btn btn-secondary" title="Modifier"><span style="font-size:1.2em;">✏️</span></a>
+                                    <form method="post" action="" style="display:inline;" onsubmit="return confirm('Confirmer la suppression de cette commune ?');">
+                                        <input type="hidden" name="delete_id" value="<?= $c['id_commune'] ?>">
+                                        <button type="submit" class="btn btn-danger" title="Supprimer"><span style="font-size:1.2em;">🗑️</span></button>
+                                    </form>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -130,7 +142,7 @@ try {
             </div>
         </section>
 
-        <section class="form-section">
+        <section class="form-section" id="form-section">
             <h3><?= $editCommune ? 'Modifier' : 'Ajouter' ?> une Commune</h3>
             <form method="post" action="" class="form-grid">
                 <input type="hidden" name="id_commune" value="<?= htmlspecialchars($editCommune['id_commune'] ?? '') ?>">
@@ -238,5 +250,16 @@ try {
     </div>
 
     <script src="../js/confirm_delete.js"></script>
+    <script>
+    // Recherche côté client sur la table des communes
+    document.getElementById('searchCommune').addEventListener('input', function() {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#communeTable tbody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(filter) ? '' : 'none';
+        });
+    });
+    </script>
 </body>
 </html>

@@ -1064,10 +1064,6 @@ $maxDob = date('Y-m-d', strtotime('-18 years'));
                     <label>Prénom</label>
                     <input type="text" name="prenom_locataire" value="<?php echo htmlspecialchars($_POST['prenom_locataire'] ?? ''); ?>" required>
                 </div>
-                <div class="form-group">
-                    <label>Pseudo</label>
-                    <input type="text" name="pseudo" id="pseudo" value="<?php echo htmlspecialchars($_POST['pseudo'] ?? ''); ?>" maxlength="30" pattern="^[a-zA-Z0-9_\-]{3,30}$" required autocomplete="username">
-                </div>
             </div>
             
             <div class="form-row">

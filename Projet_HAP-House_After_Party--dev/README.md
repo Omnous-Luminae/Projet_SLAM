@@ -1,6 +1,6 @@
 # 🎵 House After Party (HAP)
 
-> Plateforme de location de logements à proximité des lieux festifs
+Plateforme web complète et collaborative de location de logements à proximité des lieux festifs, pensée pour les fêtards, organisateurs d’événements, propriétaires et gestionnaires. HAP centralise la recherche, la réservation, la gestion, la sécurisation des séjours, la modération communautaire et l’administration avancée.
 
 ![PHP](https://img.shields.io/badge/PHP-8.0+-777BB4?logo=php&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql&logoColor=white)
@@ -8,373 +8,397 @@
 
 ---
 
-## 📋 Table des matières
+## 📖 Introduction détaillée
 
-1. [Installation](#-installation)
-2. [Configuration](#-configuration)
-3. [Guide Utilisateur](#-guide-utilisateur)
-4. [Guide Administrateur](#-guide-administrateur)
-5. [Structure du projet](#-structure-du-projet)
-6. [Fonctionnalités](#-fonctionnalités)
-7. [Sécurité](#-sécurité)
-8. [FAQ](#-faq)
+**House After Party** (HAP) est une solution tout-en-un pour faciliter la location de logements lors d’événements festifs. Elle vise à :
+
+- Offrir un moteur de recherche puissant pour trouver un logement adapté à la fête (proximité, capacité, équipements, ambiance, etc.).
+- Sécuriser les transactions et la gestion des réservations.
+- Permettre aux propriétaires de valoriser leurs biens auprès d’une clientèle ciblée.
+- Proposer un espace communautaire (avis, blog, favoris, support).
+- Fournir aux administrateurs des outils de gestion, de modération et d’archivage avancés.
+
+Le site est conçu pour être :
+- **Intuitif** : navigation fluide, interface responsive, thème clair/sombre.
+- **Sécurisé** : protection CSRF, hashage, validation, gestion des accès.
+- **Modulaire** : chaque fonctionnalité est pensée comme un module indépendant et réutilisable.
+- **Scalable** : architecture prête pour l’évolution (ajout de modules, API REST, etc.).
 
 ---
 
-## 🚀 Installation
+## 📋 Sommaire
+
+1. [Présentation du site](#présentation-du-site)
+2. [Fonctionnement général](#fonctionnement-général)
+3. [Cas d’usage & scénarios](#cas-dusage--scénarios)
+4. [Installation & Configuration](#installation--configuration)
+5. [Navigation & Modules](#navigation--modules)
+6. [Architecture technique](#architecture-technique)
+7. [Déploiement & Conseils](#déploiement--conseils)
+8. [Sécurité & Bonnes pratiques](#sécurité--bonnes-pratiques)
+9. [FAQ enrichie](#faq-enrichie)
+10. [Support & Licence](#support--licence)
+
+---
+
+## Présentation du site
+
+**House After Party** est une plateforme de location de logements axée sur la proximité des lieux festifs (clubs, bars, salles de concert, festivals, etc.).
+
+### Objectifs principaux
+
+- Simplifier la recherche et la réservation de logements pour les participants à des événements festifs.
+- Offrir un espace sécurisé et communautaire pour les utilisateurs et propriétaires.
+- Centraliser la gestion, la modération et l’archivage pour les administrateurs.
+
+### Valeurs ajoutées
+
+- **Recherche intelligente** : suggestions, filtres avancés, carte interactive.
+- **Réservation rapide** : calendrier dynamique, calcul automatique des tarifs, confirmation instantanée.
+- **Communauté** : avis, blog, favoris, support réactif.
+- **Administration avancée** : dashboard, validation, modération, archives chiffrées.
+
+---
+
+## Fonctionnement général
+
+### Utilisateurs
+
+- **Inscription/Connexion** :
+   - Création de compte (personne physique ou morale)
+   - Connexion sécurisée (limitation brute-force, récupération de mot de passe)
+   - Gestion du profil, historique, favoris
+
+- **Recherche & Navigation** :
+   - Filtres avancés (prix, capacité, type, distance, équipements, ambiance)
+   - Carte interactive (affichage des biens sur une carte, POI à proximité)
+   - Galerie photos, favoris, blog
+
+- **Réservation** :
+   - Consultation du calendrier de disponibilité
+   - Calcul automatique du tarif selon la saison, le nombre de nuits, les options
+   - Réservation en ligne, confirmation par email, historique des réservations
+
+- **Avis & Blog** :
+   - Système d’avis notés (1 à 5 étoiles), modération par admin
+   - Blog communautaire (partage d’expériences, conseils, retours)
+
+- **Support** :
+   - Système de tickets, priorisation, suivi des demandes, notifications par email
+
+### Propriétaires
+
+- **Gestion des annonces** :
+   - Ajout, modification, suppression de biens
+   - Gestion des photos, calendrier de disponibilité, tarifs
+
+- **Suivi des réservations** :
+   - Validation, historique, gestion des tarifs et saisons
+
+### Administrateurs
+
+- **Dashboard** :
+   - Statistiques globales (utilisateurs, réservations, avis, tickets)
+   - Accès rapide à tous les modules
+
+- **Validation/Modération** :
+   - Biens, avis, utilisateurs, réservations
+
+- **Gestion des tickets** :
+   - Filtrage, réponse, clôture, historique
+
+- **Archives** :
+   - Archivage sécurisé et crypté des réservations, consultation avancée
+
+---
+
+## Cas d’usage & scénarios
+
+### 1. Utilisateur lambda (Paul, 23 ans)
+
+Paul souhaite participer à un festival. Il utilise HAP pour :
+- Rechercher un logement proche du festival avec 4 couchages et parking.
+- Consulter les avis, voir la galerie photo, ajouter le bien à ses favoris.
+- Réserver pour 2 nuits, payer en ligne, recevoir la confirmation par email.
+- Laisser un avis après son séjour.
+
+### 2. Propriétaire (Sophie, 35 ans)
+
+Sophie possède un appartement en centre-ville :
+- Elle crée une annonce, ajoute des photos, définit les tarifs selon la saison.
+- Elle valide les réservations reçues, consulte l’historique, modifie le calendrier.
+- Elle répond aux avis et gère ses biens via son espace propriétaire.
+
+### 3. Administrateur (Julien, 29 ans)
+
+Julien supervise la plateforme :
+- Il valide les nouveaux biens, modère les avis, gère les utilisateurs.
+- Il répond aux tickets de support, archive les réservations terminées.
+- Il consulte les statistiques et exporte les données pour analyse.
+
+---
+
+## Installation & Configuration
 
 ### Prérequis
 
-- **XAMPP** (ou équivalent) avec PHP 8.0+ et MySQL 8.0+
+- XAMPP (ou équivalent) avec PHP 8.0+ et MySQL 8.0+
 - Navigateur web moderne (Chrome, Firefox, Edge, Safari)
 
-### Étapes d'installation
+### Installation pas à pas
 
-1. **Cloner/Copier le projet** dans le dossier `htdocs` de XAMPP :
-   ```
-   C:\xampp\htdocs\HAP\
-   ```
+1. Copier le projet dans `C:\xampp\htdocs\HAP\`
+2. Démarrer Apache et MySQL via XAMPP
+3. Créer la base de données `project_hap` via phpMyAdmin
+4. Importer le script SQL principal :
+    - `Projet_HAP(House_After_Party)/sql/projet_hap.sql`
+    - (optionnel) Importer les données de test : `Projet_HAP(House_After_Party)/sql/donnees_test_completes.sql`
+5. Configurer la connexion BDD dans `Projet_HAP(House_After_Party)/config/db.php`
+6. Accéder au site : http://localhost/HAP/
 
-2. **Démarrer XAMPP** :
-   - Lancer Apache
-   - Lancer MySQL
+### Configuration détaillée
 
-3. **Créer la base de données** :
-   - Ouvrir phpMyAdmin : http://localhost/phpmyadmin
-   - Créer une base de données nommée `project_hap`
-   - Importer le fichier SQL :
-     ```
-     Projet_HAP(House_After_Party)/sql/projet_hap.sql
-     ```
-   - (Optionnel) Importer les données de test :
-     ```
-     Projet_HAP(House_After_Party)/sql/donnees_test_completes.sql
-     ```
-
-4. **Configurer la connexion** dans `Projet_HAP(House_After_Party)/config/db.php` :
-   ```php
-   $host = 'localhost';
-   $dbname = 'project_hap';
-   $username = 'root';
-   $password = '';
-   ```
-
-5. **Accéder au site** : http://localhost/HAP/
+- **Base de données** : Modifier les identifiants dans `config/db.php`
+- **Sécurité admin** : Définir la clé secrète, les limites de connexion, etc. dans `config/admin_security.php`
+- **Anti-spam** : Ajuster les limites dans `config/spam_limits.php`
+- **Environnement** : Adapter les variables dans `archive_config.env.php` si besoin
 
 ---
 
-## ⚙️ Configuration
+## Navigation & Modules
 
-### Base de données (`config/db.php`)
+### Pages principales
 
-```php
-$host = 'localhost';      // Hôte MySQL
-$dbname = 'project_hap';  // Nom de la base
-$username = 'root';       // Utilisateur MySQL
-$password = '';           // Mot de passe MySQL
-```
+| Page | Rôle | Description |
+|------|------|-------------|
+| Accueil | Public | Présentation, témoignages, galerie |
+| Annonces | Public | Liste filtrable des logements |
+| Carte | Public | Carte interactive des biens |
+| Points d’intérêt | Public | Clubs, bars, restaurants à proximité |
+| Blog | Public | Avis, articles, retours d’expérience |
+| Contact | Public | Formulaire de support/ticket |
+| Profil | Utilisateur | Gestion du compte, favoris, historique |
+| Dashboard | Admin | Supervision, statistiques, accès modules |
 
-### Sécurité Admin (`config/admin_security.php`)
+### Modules fonctionnels
 
-```php
-// Clé secrète pour inscription admin (à changer !)
-define('ADMIN_SECRET_KEY', 'VOTRE_CLE_SECRETE');
+- **Recherche avancée** :
+   - Filtres (prix, capacité, type, distance, équipements, ambiance)
+   - Suggestions automatiques, autocomplete, recherche par carte
 
-// Tentatives de connexion max
-define('MAX_LOGIN_ATTEMPTS', 5);
+- **Réservation** :
+   - Sélection de dates, affichage dynamique du tarif
+   - Gestion des conflits de réservation, confirmation par email
 
-// Durée de blocage (en secondes)
-define('LOGIN_LOCKOUT_TIME', 900);
-```
+- **Favoris** :
+   - Ajout/suppression rapide, consultation dans le profil
 
-### Anti-spam (`config/spam_limits.php`)
+- **Avis** :
+   - Attribution de notes, commentaires, validation par admin avant publication
 
-Configuration des limites de soumission pour éviter le spam.
+- **Support** :
+   - Système de tickets avec priorisation, suivi, réponse par email
 
----
+- **Thème clair/sombre** :
+   - Basculer à tout moment via le bouton dédié
 
-## 👤 Guide Utilisateur
+### Administration
 
-### Inscription et Connexion
-
-1. **S'inscrire** : Cliquer sur "Se connecter" → "Créer un compte"
-   - Remplir le formulaire (nom, prénom, email, mot de passe)
-   - Choisir le type de compte : Personne Physique ou Personne Morale
-
-2. **Se connecter** : Entrer email et mot de passe
-
-3. **Mot de passe oublié** : Cliquer sur "Mot de passe oublié" pour réinitialiser
-
-### Navigation
-
-| Page | Description |
-|------|-------------|
-| 🏠 **Accueil** | Présentation du site, témoignages, galerie |
-| 📅 **Annonces** | Liste des logements disponibles |
-| 🗺️ **Carte** | Carte interactive des logements |
-| 🎵 **Points d'Intérêt** | Boîtes de nuit, bars, restaurants à proximité |
-| 📝 **Blog** | Articles et avis des utilisateurs |
-| 📞 **Contact** | Formulaire de contact et support |
-
-### Réserver un logement
-
-1. Parcourir les **Annonces**
-2. Cliquer sur une annonce pour voir les détails
-3. Consulter le **calendrier de disponibilité**
-4. Sélectionner les dates et cliquer sur **Réserver**
-5. Confirmer la réservation
-
-### Laisser un avis
-
-1. Aller sur la page **Blog**
-2. Cliquer sur "Laisser un avis"
-3. Sélectionner le bien concerné
-4. Donner une note (1-5 étoiles) et écrire un commentaire
-5. L'avis sera visible après validation par un administrateur
-
-### Contacter le support
-
-1. Aller sur la page **Contact**
-2. Choisir le type de demande :
-   - ❓ **Question** : Questions générales
-   - 🚨 **Signalement** : Signaler un contenu ou utilisateur
-   - 🐛 **Bug/Erreur** : Problème technique
-   - 💡 **Suggestion** : Idée d'amélioration
-   - 📝 **Autre** : Autre demande
-3. Définir la priorité (Basse → Urgente)
-4. Remplir le formulaire et envoyer
-5. Un numéro de ticket vous sera attribué
-
-### Thème clair/sombre
-
-Cliquer sur le bouton 🌙/☀️ en bas à droite pour basculer entre les thèmes.
+- **Gestion des biens** : CRUD complet, validation, archivage
+- **Gestion des utilisateurs** : Validation, blocage, réinitialisation
+- **Gestion des avis** : Modération, suppression, publication différée
+- **Gestion des réservations** : Suivi, validation, archivage
+- **Gestion des tarifs/saisons** : Définition des périodes, ajustement dynamique des prix
+- **Gestion des points d’intérêt** : Ajout, modification, suppression de POI
+- **Gestion des tickets/support** : Filtrage, réponse, clôture, historique
+- **Archives** : Chiffrement et consultation des réservations archivées
 
 ---
 
-## 🛠️ Guide Administrateur
+## Architecture technique
 
-### Accès au Dashboard
-
-1. Se connecter avec un compte **Animateur**
-2. Cliquer sur "🛠️ Dashboard Admin" dans le header
-
-### Inscription Admin
-
-1. Aller sur `/Projet_HAP(House_After_Party)/auth/inscription_admin.php`
-2. Entrer la **clé secrète admin** (définie dans `admin_security.php`)
-3. Remplir le formulaire d'inscription
-
-### Fonctionnalités Admin
-
-| Module | Description |
-|--------|-------------|
-| 🏠 **Gestion des Biens** | Ajouter, modifier, supprimer des logements |
-| 🔍 **Validation des Biens** | Valider/refuser les nouveaux biens |
-| 🎭 **Validation des Avis** | Modérer les avis des utilisateurs |
-| 👥 **Gestion des Locataires** | Gérer les comptes utilisateurs |
-| 📅 **Gestion des Réservations** | Suivre et gérer les réservations |
-| 🎉 **Gestion des Événements** | Organiser des événements |
-| 🎵 **Points d'Intérêt** | Gérer les lieux (boîtes, bars, etc.) |
-| 💰 **Gestion des Tarifs** | Définir les prix par saison |
-| 📢 **Gestion des Annonces** | Créer/modifier les annonces |
-| 🗓️ **Gestion des Saisons** | Définir les périodes (haute/basse saison) |
-| 📬 **Messages & Support** | Répondre aux tickets utilisateurs |
-| 🔐 **Archives** | Consulter les réservations archivées |
-
-### Gestion des Messages/Tickets
-
-1. Aller dans **Messages & Support**
-2. Filtrer par statut, type ou priorité
-3. Actions disponibles :
-   - Changer le statut (Nouveau → En cours → Résolu → Fermé)
-   - **Répondre** au ticket (la réponse sera visible par l'utilisateur)
-   - Supprimer le ticket
-
-### Sélecteur rapide
-
-Utiliser le menu déroulant "Aller directement à un formulaire" pour accéder rapidement à n'importe quel module.
-
----
-
-## 📁 Structure du projet
+### Structure du projet
 
 ```
 HAP/
-├── index.php                    # Page d'accueil
-├── contact.php                  # Page de contact
-├── apropos.php                  # Dashboard Admin
-├── about.php                    # À propos
-├── theme_toggle.php             # Bouton thème clair/sombre
-│
+├── index.php                # Accueil
+├── contact.php              # Contact/support
+├── apropos.php              # Dashboard admin
+├── about.php                # À propos
+├── theme_toggle.php         # Thème clair/sombre
 └── Projet_HAP(House_After_Party)/
-    ├── api/                     # Endpoints API (AJAX)
-    │   ├── search_biens.php
-    │   ├── get_reservations.php
-    │   └── ...
-    │
-    ├── auth/                    # Authentification
-    │   ├── connexion.php        # Connexion utilisateur
-    │   ├── inscription.php      # Inscription utilisateur
-    │   ├── connexion_admin.php  # Connexion admin
-    │   ├── inscription_admin.php# Inscription admin
-    │   ├── profile.php          # Profil utilisateur
-    │   ├── forgot_password.php  # Mot de passe oublié
-    │   └── logout.php           # Déconnexion
-    │
-    ├── classes/                 # Classes PHP (POO)
-    │   ├── Biens/
-    │   ├── Locataire/
-    │   ├── Reservation/
-    │   └── ...
-    │
-    ├── config/                  # Configuration
-    │   ├── db.php               # Connexion BDD
-    │   ├── admin_security.php   # Sécurité admin
-    │   └── spam_limits.php      # Limites anti-spam
-    │
-    ├── Css/                     # Feuilles de style
-    │   ├── style.css            # Style principal
-    │   ├── dashboard.css        # Style dashboard
-    │   ├── forms.css            # Style formulaires
-    │   └── ...
-    │
-    ├── forms/                   # Formulaires de gestion
-    │   ├── Annonce.form.php     # Gestion annonces
-    │   ├── Bien.form.php        # Gestion biens
-    │   ├── Reservation.form.php # Gestion réservations
-    │   ├── validate_biens.php   # Validation biens
-    │   ├── validate_reviews.php # Validation avis
-    │   ├── manage_contacts.php  # Gestion tickets
-    │   ├── blog.php             # Blog/Avis
-    │   └── ...
-    │
-    ├── images/                  # Images
-    │   ├── uploads/             # Photos uploadées
-    │   │   └── poi/             # Photos points d'intérêt
-    │   └── upload.php           # Script d'upload
-    │
-    ├── js/                      # Scripts JavaScript
-    │   ├── autocomplete.js
-    │   ├── validation.js
-    │   └── ...
-    │
-    └── sql/                     # Scripts SQL
-        ├── base.sql             # Structure BDD
-        └── donnees_test_completes.sql
+      ├── api/                 # Endpoints AJAX/API
+      ├── auth/                # Authentification (utilisateur/admin)
+      ├── classes/             # Classes PHP (POO)
+      ├── config/              # Fichiers de configuration
+      ├── Css/                 # Styles CSS
+      ├── forms/               # Formulaires de gestion
+      ├── images/              # Images et uploads
+      ├── includes/            # Fichiers inclusions PHP
+      ├── js/                  # Scripts JavaScript
+      ├── scripts/             # Scripts d’automatisation
+      └── sql/                 # Scripts SQL
 ```
+
+#### Schéma textuel des modules principaux
+
+```
+Utilisateur
+    │
+    ├──> Recherche (API/search_biens.php)
+    │         │
+    │         └──> Affichage Annonces (forms/Annonce.form.php)
+    │
+    ├──> Réservation (API/update_reservation.php)
+    │         │
+    │         └──> Paiement/Confirmation (email)
+    │
+    ├──> Avis (forms/blog.php, API/validate_reviews.php)
+    │
+    └──> Support (forms/manage_contacts.php)
+
+Propriétaire
+    │
+    ├──> Gestion Biens (forms/Bien.form.php)
+    ├──> Gestion Calendrier (forms/Reservation.form.php)
+    └──> Suivi Réservations (forms/manage_archives.php)
+
+Admin
+    │
+    ├──> Dashboard (forms/dashboard.php)
+    ├──> Validation (forms/validate_biens.php, forms/validate_reviews.php)
+    ├──> Gestion Utilisateurs (forms/Locataires.form.php)
+    ├──> Gestion Tickets (forms/manage_contacts.php)
+    └──> Archives (classes/ReservationArchive.php)
+```
+
+### Logique technique
+
+- **PHP 8+** : Backend, logique métier, sécurité, gestion des sessions, API.
+- **MySQL 8+** : Stockage des données, relations, transactions.
+- **JavaScript** : Interactivité, AJAX, validation côté client, carte interactive.
+- **CSS** : Thème responsive, animations, dark/light mode.
+- **Sécurité** : CSRF, hashage bcrypt, PDO, limitation brute-force, validation serveur.
+
+### Points clés
+
+- **POO** : Toutes les entités principales sont modélisées en classes (Biens, Locataires, Réservations, etc.).
+- **API interne** : Les appels AJAX passent par des endpoints sécurisés (dossier `api/`).
+- **Séparation des rôles** : Utilisateur, Propriétaire, Admin, Animateur.
+- **Archivage** : Les réservations archivées sont chiffrées et consultables uniquement par les admins.
 
 ---
 
-## ✨ Fonctionnalités
+## Déploiement & Conseils
 
-### Utilisateurs
-- ✅ Inscription/Connexion (Personne Physique ou Morale)
-- ✅ Profil utilisateur modifiable
-- ✅ Réinitialisation mot de passe
-- ✅ Système de favoris
-- ✅ Historique des réservations
-- ✅ Système d'avis avec notes
-- ✅ Suivi des tickets de support
+### Déploiement local (XAMPP)
 
-### Recherche & Navigation
-- ✅ Recherche de biens avec filtres
-- ✅ Carte interactive
-- ✅ Points d'intérêt à proximité
-- ✅ Galerie photos avec lightbox
-- ✅ Thème clair/sombre
+1. Copier le dossier dans `htdocs`.
+2. Vérifier les droits d’écriture sur `images/uploads/`.
+3. Adapter les chemins dans les fichiers de config si besoin.
+4. Tester toutes les fonctionnalités (inscription, réservation, avis, support).
 
-### Réservations
-- ✅ Calendrier de disponibilité
-- ✅ Calcul automatique du tarif
-- ✅ Gestion des saisons (haute/basse)
-- ✅ Confirmation par email
+### Déploiement production
 
-### Administration
-- ✅ Dashboard avec statistiques
-- ✅ Validation des biens et avis
-- ✅ Gestion complète CRUD
-- ✅ Système de tickets/support
-- ✅ Archives cryptées
+- Utiliser un hébergement compatible PHP 8+ et MySQL 8+.
+- Activer HTTPS (SSL/TLS).
+- Protéger les fichiers sensibles (`config/`, `.env`, etc.).
+- Mettre à jour la clé admin et les variables d’environnement.
+- Activer les logs et la surveillance.
+- Sauvegarder régulièrement la base de données.
 
-### Sécurité
-- ✅ Protection CSRF
-- ✅ Hashage des mots de passe (bcrypt)
-- ✅ Protection contre les injections SQL (PDO)
-- ✅ Limitation des tentatives de connexion
-- ✅ Clé secrète pour inscription admin
+### Conseils d’optimisation
+
+- Activer la compression GZIP côté serveur.
+- Optimiser les images (taille, format WebP).
+- Utiliser un cache navigateur pour les assets statiques.
+- Sécuriser les permissions des dossiers d’upload.
 
 ---
 
-## 🔒 Sécurité
+## Sécurité & Bonnes pratiques
 
-### Bonnes pratiques
-
-1. **Changer la clé admin** dans `config/admin_security.php`
-2. **Ne jamais committer** le fichier de configuration en production
-3. **Utiliser HTTPS** en production
-4. **Sauvegarder** régulièrement la base de données
-5. **Mettre à jour** PHP et MySQL régulièrement
-
-### Fichiers sensibles à protéger
-
-```
-config/db.php              # Identifiants BDD
-config/admin_security.php  # Clé admin
-```
-
-### En production
-
-- Activer `ADMIN_EMAIL_VERIFICATION`
-- Restreindre `ADMIN_ALLOWED_IPS`
-- Activer les logs `ADMIN_LOG_ENABLED`
+- **Clé admin** : À personnaliser dans `config/admin_security.php`.
+- **Jamais committer les fichiers sensibles** (`db.php`, `admin_security.php`) en production.
+- **HTTPS** : Obligatoire en production.
+- **Logs** : Activer la journalisation des actions admin.
+- **Sauvegardes** : Régulières de la BDD.
+- **Mises à jour** : PHP/MySQL et dépendances à jour.
+- **Protection CSRF** : Jetons sur tous les formulaires sensibles.
+- **Hashage** : Mots de passe via bcrypt.
+- **PDO** : Toutes les requêtes SQL sont préparées.
+- **Limitation brute-force** : Blocage temporaire après X tentatives.
+- **Validation serveur** : Toutes les entrées utilisateurs sont validées côté serveur.
+- **Séparation des rôles** : Accès restreint selon le type de compte.
 
 ---
 
-## ❓ FAQ
+## FAQ enrichie
 
 ### Comment devenir administrateur ?
 
-1. Obtenir la clé secrète admin auprès d'un admin existant
-2. Aller sur `/Projet_HAP(House_After_Party)/auth/inscription_admin.php`
-3. Entrer la clé et créer votre compte
+1. Obtenir la clé secrète admin auprès d’un admin existant.
+2. Aller sur `/Projet_HAP(House_After_Party)/auth/inscription_admin.php`.
+3. Entrer la clé et créer votre compte.
 
 ### Je ne peux pas me connecter
 
 - Vérifier email/mot de passe
 - Après 5 tentatives échouées, attendre 15 minutes
 - Utiliser "Mot de passe oublié"
+- Vérifier que votre compte est validé par un admin
 
 ### Comment ajouter un bien ?
 
-1. Se connecter en tant qu'admin
+1. Se connecter en tant qu’admin ou propriétaire
 2. Dashboard → Gestion des Biens
 3. Remplir le formulaire et ajouter des photos
 4. Le bien sera visible après validation
 
-### Les images ne s'affichent pas
+### Les images ne s’affichent pas
 
 - Vérifier les permissions du dossier `images/uploads/`
-- S'assurer que les chemins sont corrects dans la BDD
+- S’assurer que les chemins sont corrects dans la BDD
+- Vider le cache navigateur
 
 ### Comment changer le thème ?
 
-Cliquer sur l'icône 🌙/☀️ en bas à droite de l'écran.
+Cliquer sur l’icône 🌙/☀️ en bas à droite de l’écran.
+
+### Comment contacter le support ?
+
+1. Aller sur la page Contact
+2. Remplir le formulaire selon le type de demande (question, bug, suggestion, etc.)
+3. Un ticket sera créé et suivi par l’équipe
+
+### Comment fonctionne la validation des avis ?
+
+Les avis sont soumis à validation par un administrateur avant publication pour garantir la qualité et la pertinence.
+
+### Comment sont gérées les saisons et tarifs ?
+
+L’admin définit les périodes de haute/basse saison et ajuste dynamiquement les tarifs selon la demande.
+
+### Peut-on exporter les données ?
+
+Oui, les administrateurs peuvent exporter les réservations, avis, utilisateurs au format CSV depuis le dashboard.
+
+### Peut-on intégrer d’autres moyens de paiement ?
+
+Le système est conçu pour être extensible (API REST, modules de paiement additionnels).
 
 ---
 
-## 📞 Support
+## Support & Licence
 
 Pour toute question ou problème :
+
 - **Email** : contact@hap.fr
 - **Formulaire** : Page Contact du site
 - **Documentation** : Ce fichier README
 
 ---
 
-## 📝 Licence
-
 © 2025 House After Party - Tous droits réservés.
-
----
 
 *Fait avec ❤️ pour les amoureux des nuits blanches*

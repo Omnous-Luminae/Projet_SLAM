@@ -7,7 +7,6 @@ class Locataire{
     private $id_locataire = "";
     private $nom_locataire = "";
     private $prenom_locataire = "";
-    private $pseudo = "";
     private $date_naissance_locataire = "";
     private $mdp_locataire = "";
     private $rue_locataire = "";
@@ -16,11 +15,10 @@ class Locataire{
     private $tel_locataire = "";
     private $pdo;
 
-    public function __construct($id_locataire, $nom_locataire, $prenom_locataire, $pseudo, $email_locataire, $tel_locataire, $date_naissance_locataire, $mdp_locataire, $rue_locataire, $complement_rue_locataire, $pdo = null){
+    public function __construct($id_locataire, $nom_locataire, $prenom_locataire, $email_locataire, $tel_locataire, $date_naissance_locataire, $mdp_locataire, $rue_locataire, $complement_rue_locataire, $pdo = null){
         $this->id_locataire = $id_locataire;
         $this->nom_locataire = $nom_locataire;
         $this->prenom_locataire = $prenom_locataire;
-        $this->pseudo = $pseudo;
         $this->email_locataire = $email_locataire;
         $this->tel_locataire = $tel_locataire;
         $this->date_naissance_locataire = $date_naissance_locataire;
@@ -34,7 +32,6 @@ class Locataire{
     public function getIdLocataire() { return $this->id_locataire; }
     public function getNomLocataire() { return $this->nom_locataire; }
     public function getPrenomLocataire() { return $this->prenom_locataire; }
-    public function getPseudo() { return $this->pseudo; }
     public function getEmailLocataire() { return $this->email_locataire; }
     public function getTelLocataire() { return $this->tel_locataire; }
     public function getDateNaissanceLocataire() { return $this->date_naissance_locataire; }
@@ -45,7 +42,6 @@ class Locataire{
 
     public function setNomLocataire($nom_locataire) { $this->nom_locataire = $nom_locataire; }
     public function setPrenomLocataire($prenom_locataire) { $this->prenom_locataire = $prenom_locataire; }
-    public function setPseudo($pseudo) { $this->pseudo = $pseudo; }
     public function setEmailLocataire($email_locataire) { $this->email_locataire = $email_locataire; }
     public function setTelLocataire($tel_locataire) { $this->tel_locataire = $tel_locataire; }
     public function setDateNaissanceLocataire($date_naissance_locataire) { $this->date_naissance_locataire = $date_naissance_locataire; }
@@ -54,16 +50,15 @@ class Locataire{
     public function setComplementRueLocataire($complement_rue_locataire) { $this->complement_rue_locataire = $complement_rue_locataire; }
 
 // CREATE
-    public function createLocataire($nom_locataire, $prenom_locataire, $pseudo, $email_locataire, $tel_locataire, $date_naissance_locataire, $mdp_locataire, $rue_locataire, $complement_rue_locataire, $siret = null, $raison_sociale = null, $id_commune = 1)
+    public function createLocataire($nom_locataire, $prenom_locataire, $email_locataire, $tel_locataire, $date_naissance_locataire, $mdp_locataire, $rue_locataire, $complement_rue_locataire, $siret = null, $raison_sociale = null, $id_commune = 1)
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO Locataire (nom_locataire, prenom_locataire, pseudo, email_locataire, telephone_locataire, date_naissance, password_locataire, rue_locataire, complement_locataire, siret, raison_sociale, id_commune)
-            VALUES (:nom, :prenom, :pseudo, :email, :tel, :date_naissance, :mdp, :rue, :complement, :siret, :raison_sociale, :id_commune)"
+            "INSERT INTO Locataire (nom_locataire, prenom_locataire, email_locataire, telephone_locataire, date_naissance, password_locataire, rue_locataire, complement_locataire, siret, raison_sociale, id_commune)
+            VALUES (:nom, :prenom, :email, :tel, :date_naissance, :mdp, :rue, :complement, :siret, :raison_sociale, :id_commune)"
         );
         return $stmt->execute([
             'nom' => $nom_locataire,
             'prenom' => $prenom_locataire,
-            'pseudo' => $pseudo,
             'email' => $email_locataire,
             'tel' => $tel_locataire,
             'date_naissance' => $date_naissance_locataire,
@@ -92,7 +87,7 @@ class Locataire{
     }
 
     // UPDATE
-    public function updateLocataire($id_locataire, $nom_locataire, $prenom_locataire, $pseudo, $email_locataire, $tel_locataire, $date_naissance_locataire, $mdp_locataire, $rue_locataire, $complement_locataire, $siret = null, $raison_sociale = null, $id_commune = null)
+    public function updateLocataire($id_locataire, $nom_locataire, $prenom_locataire, $email_locataire, $tel_locataire, $date_naissance_locataire, $mdp_locataire, $rue_locataire, $complement_locataire, $siret = null, $raison_sociale = null, $id_commune = null)
     {
         $setParts = [];
         $params = ['id' => $id_locataire];
@@ -104,10 +99,6 @@ class Locataire{
         if ($prenom_locataire !== null) {
             $setParts[] = "prenom_locataire = :prenom";
             $params['prenom'] = $prenom_locataire;
-        }
-        if ($pseudo !== null) {
-            $setParts[] = "pseudo = :pseudo";
-            $params['pseudo'] = $pseudo;
         }
         if ($email_locataire !== null) {
             $setParts[] = "email_locataire = :email";
