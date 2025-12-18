@@ -34,8 +34,8 @@ try {
             $messageType = 'error';
         } else {
             $locClass = new Locataire(null, null, null, null, null, null, null, null, null, $pdo);
-            // Met à jour tous les champs du profil, sauf pseudo
-            $locClass->updateLocataire($userId, $nom, $prenom, null, $email, $tel, $date_naissance, null, $adresse, $complement, null, null, null);
+            // Met à jour tous les champs du profil
+            $locClass->updateLocataire($userId, $nom, $prenom, $email, $tel, $date_naissance, null, $adresse, $complement, null, null, null);
             // Met à jour la commune si besoin (à adapter selon ta structure)
             $stmt = $pdo->prepare('UPDATE Locataire SET commune = ? WHERE id_locataire = ?');
             $stmt->execute([$commune, $userId]);
@@ -142,7 +142,7 @@ try {
     } catch (PDOException $e) {}
 
     // Fetch user data for profile form
-    $locClass = new Locataire(null, null, null, null, null, null, null, null, null, null, $pdo);
+    $locClass = new Locataire(null, null, null, null, null, null, null, null, null, $pdo);
     if (!$pdo) {
         require_once __DIR__ . '/../config/db.php';
     }
@@ -163,6 +163,7 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../Css/style.css">
     <link rel="stylesheet" href="../Css/profile.css">
+    <link rel="stylesheet" href="../Css/autocomplete-commune.css">
     <style>
     * { box-sizing: border-box; }
     
@@ -1063,18 +1064,20 @@ try {
                             <input type="date" id="date_naissance" name="date_naissance" value="<?= htmlspecialchars($userData['date_naissance'] ?? '') ?>" max="<?= date('Y-m-d', strtotime('-18 years')) ?>" required>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label for="adresse">Adresse</label>
-                        <input type="text" id="adresse" name="adresse" value="<?= htmlspecialchars($userData['adresse'] ?? '') ?>" maxlength="100" required autocomplete="street-address">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="commune">Commune</label>
+                            <input type="text" id="commune" name="commune" value="<?= htmlspecialchars($userData['commune'] ?? '') ?>" maxlength="100" required placeholder="Commencez à taper pour autocomplétion...">
+                        </div>
+                        <div class="form-group">
+                            <label for="adresse">Adresse</label>
+                            <input type="text" id="adresse" name="adresse" value="<?= htmlspecialchars($userData['adresse'] ?? '') ?>" maxlength="100" required autocomplete="street-address" placeholder="Commencez à taper pour autocomplétion...">
+                        </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="complement">Complément d'adresse</label>
                             <input type="text" id="complement" name="complement" value="<?= htmlspecialchars($userData['complement'] ?? '') ?>" maxlength="100" autocomplete="address-line2">
-                        </div>
-                        <div class="form-group">
-                            <label for="commune">Commune</label>
-                            <input type="text" id="commune" name="commune" value="<?= htmlspecialchars($userData['commune'] ?? '') ?>" maxlength="100" required>
                         </div>
                     </div>
                     <div class="form-group">
@@ -1108,24 +1111,118 @@ try {
         </div>
     </div>
     
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="../js/autocomplete.js"></script>
     <script>
+    // Onglets profil (inchangé)
     function showTab(tabName) {
-        // Cacher tous les contenus
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.classList.remove('active');
         });
-        
-        // Désactiver tous les boutons
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        
-        // Afficher le contenu sélectionné
         document.getElementById('tab-' + tabName).classList.add('active');
-        
-        // Activer le bouton correspondant
         event.target.classList.add('active');
     }
+
+    // --- Autocomplétion commune/adresse façon annonces ---
+    $(function() {
+        let streetsForCommune = [];
+        let streetsForCommuneFeatures = [];
+        let codeInsee = null;
+
+        // Initialiser l'autocomplétion commune (API interne)
+        if ($('#commune').length) {
+            initCommuneAutocomplete('#commune');
+        }
+
+        // Désactiver adresse tant que commune non sélectionnée
+        if ($('#adresse').length) {
+            $('#adresse').attr('placeholder', 'Sélectionnez d\'abord une commune...');
+            $('#adresse').prop('disabled', true);
+        }
+
+        // Quand une commune est sélectionnée, charger les rues (adresse)
+        $(document).on('commune-selected', '#commune', function(event, code_insee) {
+            codeInsee = code_insee;
+            if ($('#adresse').length) {
+                $('#adresse').val('');
+                $('#adresse').prop('disabled', false);
+                $('#adresse').attr('placeholder', 'Chargement de toutes les rues...');
+                fetchStreetsForCommune(codeInsee, $('#commune').val());
+            }
+        });
+
+        // Si l'utilisateur modifie la commune à la main, désactive adresse
+        $(document).on('input', '#commune', function() {
+            if ($('#adresse').length) {
+                $('#adresse').val('');
+                $('#adresse').prop('disabled', true);
+                $('#adresse').attr('placeholder', 'Sélectionnez d\'abord une commune...');
+            }
+        });
+
+        // Fonction pour charger toutes les rues d'une commune (API adresse.data.gouv.fr)
+        function fetchStreetsForCommune(code_insee, communeText) {
+            if (!code_insee && !communeText) return;
+            const apiUrl = 'https://api-adresse.data.gouv.fr/search/';
+            const commonPrefixes = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','rue','avenue','boulevard','place','chemin','impasse','allée'];
+            let allFeatures = [];
+            let completed = 0;
+            commonPrefixes.forEach(function(prefix) {
+                const params = { q: prefix, type: 'street', limit: 50 };
+                if (code_insee && code_insee.length === 5) params.citycode = code_insee;
+                $.ajax({
+                    url: apiUrl,
+                    dataType: 'json',
+                    data: params,
+                    success: function(data) {
+                        const features = data && data.features ? data.features : [];
+                        if (features.length > 0) allFeatures = allFeatures.concat(features);
+                    },
+                    complete: function() {
+                        completed++;
+                        if (completed === commonPrefixes.length) processStreetResults(allFeatures);
+                    }
+                });
+            });
+        }
+
+        function processStreetResults(features) {
+            let filteredFeatures = features.filter(f => f.properties && (f.properties.type === 'street' || f.properties.type === 'housenumber' || f.properties.type === 'locality'));
+            streetsForCommuneFeatures = filteredFeatures;
+            streetsForCommune = filteredFeatures.map(f => (f && f.properties && (f.properties.name || f.properties.label)) ? (f.properties.name || f.properties.label) : null).filter(Boolean);
+            streetsForCommune = [...new Set(streetsForCommune)];
+            if ($('#adresse').length) {
+                if (streetsForCommune.length > 0) {
+                    setAdresseAutocompleteFromStreets();
+                    $('#adresse').prop('disabled', false);
+                    $('#adresse').attr('placeholder', 'Tapez le nom d\'une rue... (' + streetsForCommune.length + ' rues)');
+                } else {
+                    $('#adresse').prop('disabled', false);
+                    $('#adresse').attr('placeholder', 'Tapez le nom de la rue (aucune suggestion disponible)');
+                }
+            }
+        }
+
+        function setAdresseAutocompleteFromStreets() {
+            try { $('#adresse').autocomplete('destroy'); } catch (e) {}
+            $('#adresse').autocomplete({
+                source: function(request, response) {
+                    const term = (request.term || '').toLowerCase();
+                    const results = streetsForCommune.filter(s => s.toLowerCase().indexOf(term) !== -1).slice(0, 50).map(s => ({ label: s, value: s }));
+                    response(results);
+                },
+                minLength: 1,
+                select: function(event, ui) {
+                    $('#adresse').val(ui.item.value);
+                    return false;
+                }
+            });
+        }
+    });
     </script>
     
     <?php include '../../theme_toggle.php'; ?>

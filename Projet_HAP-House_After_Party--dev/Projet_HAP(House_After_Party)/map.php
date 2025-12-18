@@ -31,10 +31,97 @@ if ($pdo) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin:0; font-family: Arial, Helvetica, sans-serif; }
-        #map { height: 80vh; }
-        .topbar { padding: 12px; background: #fff; border-bottom: 1px solid #eee; display:flex; align-items:center; gap:12px; }
-        .back { color:#a100b8; text-decoration:none; font-weight:600 }
+        body {
+            margin: 0;
+            font-family: 'Montserrat', Arial, Helvetica, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+        }
+        .topbar {
+            padding: 18px 32px;
+            background: rgba(255,255,255,0.95);
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            box-shadow: 0 4px 24px rgba(102,126,234,0.08);
+            border-radius: 0 0 24px 24px;
+            margin-bottom: 18px;
+        }
+        .back {
+            color: #764ba2;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.1em;
+            transition: color 0.2s;
+        }
+        .back:hover {
+            color: #a100b8;
+            text-decoration: underline;
+        }
+        .topbar h3 {
+            margin: 0;
+            font-size: 1.3em;
+            color: #333;
+            letter-spacing: 1px;
+        }
+        #map {
+            height: 78vh;
+            max-width: 1100px;
+            margin: 0 auto 32px auto;
+            border-radius: 24px;
+            box-shadow: 0 12px 48px rgba(102,126,234,0.18), 0 2px 8px rgba(0,0,0,0.08);
+            border: 3px solid #fff;
+            overflow: hidden;
+            background: #f7f7fa;
+        }
+        /* Custom Leaflet controls */
+        .leaflet-control-zoom {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.12);
+        }
+        .leaflet-control-zoom a {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff !important;
+            font-weight: bold;
+            font-size: 1.3em;
+            border: none !important;
+            margin: 0;
+            transition: background 0.2s;
+        }
+        .leaflet-control-zoom a:hover {
+            background: linear-gradient(135deg, #764ba2, #667eea);
+        }
+        /* Popup styling */
+        .leaflet-popup-content-wrapper {
+            border-radius: 16px !important;
+            box-shadow: 0 4px 24px rgba(102,126,234,0.18);
+            background: #fff;
+            border: 2px solid #764ba2;
+        }
+        .leaflet-popup-content {
+            font-family: 'Montserrat', Arial, Helvetica, sans-serif;
+            color: #333;
+            font-size: 1em;
+        }
+        .leaflet-popup-tip {
+            background: #764ba2;
+        }
+        /* Marker hover effect */
+        .leaflet-interactive:hover {
+            filter: drop-shadow(0 0 8px #764ba2);
+            cursor: pointer;
+        }
+        /* Responsive */
+        @media (max-width: 900px) {
+            #map { max-width: 98vw; height: 60vh; }
+            .topbar { padding: 12px 8px; font-size: 0.98em; }
+        }
+        @media (max-width: 600px) {
+            #map { height: 48vh; border-radius: 12px; }
+            .topbar { border-radius: 0 0 12px 12px; }
+        }
     </style>
 </head>
 <body>

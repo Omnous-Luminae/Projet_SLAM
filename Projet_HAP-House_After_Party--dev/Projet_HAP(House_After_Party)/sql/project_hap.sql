@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : mar. 16 déc. 2025 à 11:46
+-- Généré le : jeu. 18 déc. 2025 à 16:25
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -40,7 +40,7 @@ CREATE TABLE `admin_login_attempts` (
 --
 
 INSERT INTO `admin_login_attempts` (`id`, `ip_address`, `email`, `success`, `attempt_time`) VALUES
-(5, '::1', 'enjolras.ethan3@gmail.com', 1, '2025-12-16 11:33:53');
+(10, '::1', 'enjolras.ethan3@gmail.com', 1, '2025-12-18 11:20:33');
 
 -- --------------------------------------------------------
 
@@ -103,7 +103,8 @@ INSERT INTO `archive_log` (`id_log`, `action`, `id_reservation`, `id_archive`, `
 (13, 'archivage', 1, 13, '2025-12-16 08:32:47', NULL, 'Réservation archivée et cryptée avec succès'),
 (14, 'archivage', 3, 14, '2025-12-16 08:32:47', NULL, 'Réservation archivée et cryptée avec succès'),
 (15, 'restauration', NULL, 1, '2025-12-16 08:49:21', NULL, 'Archive restaurée et décryptée'),
-(16, 'restauration', NULL, 14, '2025-12-16 08:49:47', NULL, 'Archive restaurée et décryptée');
+(16, 'restauration', NULL, 14, '2025-12-16 08:49:47', NULL, 'Archive restaurée et décryptée'),
+(17, 'restauration', NULL, 13, '2025-12-18 08:52:49', 3, 'Archive restaurée et décryptée');
 
 -- --------------------------------------------------------
 
@@ -135,21 +136,21 @@ CREATE TABLE `biens` (
 --
 
 INSERT INTO `biens` (`id_biens`, `nom_biens`, `rue_biens`, `superficie_biens`, `description_biens`, `animal_biens`, `nb_couchage`, `id_commune`, `id_type_biens`, `is_hidden`, `created_by_id`, `created_by_name`, `unavailable_weeks`, `validated`, `validated_by`, `validated_at`) VALUES
-(1, 'Appartement Vue Tour Eiffel', '10 Avenue de la Bourdonnais', 75, 'Magnifique appartement avec vue directe sur la Tour Eiffel. Idéal pour un séjour romantique à Paris. Quartier calme et résidentiel.', 0, 4, 30438, 1, 0, NULL, 'Pierre Dubois', NULL, 1, NULL, NULL),
-(2, 'Villa Méditerranée', '25 Corniche Kennedy', 180, 'Superbe villa face à la mer avec piscine privée. 4 chambres, jardin de 500m². Vue panoramique sur la Méditerranée. Accès direct à la plage.', 1, 8, 4440, 3, 0, NULL, 'Marie Moreau', NULL, 1, NULL, NULL),
-(3, 'Loft Design Lyon', '15 Quai Saint-Antoine', 95, 'Loft contemporain dans le vieux Lyon. Style industriel avec poutres apparentes. Proche des restaurants et commerces.', 0, 6, 19746, 7, 0, NULL, 'Thomas Leroy', NULL, 1, NULL, NULL),
-(4, 'Maison Bordelaise', '42 Rue des Vignes', 140, 'Belle maison bordelaise rénovée avec jardin. Proche des châteaux viticoles. Parfaite pour découvrir la région des vins.', 1, 6, 8865, 2, 0, NULL, 'Julie Petit', NULL, 1, NULL, NULL),
-(5, 'Studio Nice Centre', '8 Promenade des Anglais', 35, 'Studio cosy avec balcon vue mer. À deux pas de la plage et du centre-ville. Tout équipé pour 2 personnes.', 0, 2, 1816, 4, 0, NULL, 'Marc Rousseau', NULL, 1, NULL, NULL),
-(6, 'Chalet Annecy', '30 Route du Lac', 120, 'Chalet traditionnel savoyard avec vue sur le lac d\'Annecy et les montagnes. Cheminée, terrasse, 3 chambres. Idéal été comme hiver.', 1, 7, 32716, 5, 0, NULL, 'Emma Blanc', NULL, 1, NULL, NULL),
-(7, 'Penthouse Marseille', '100 Boulevard Michelet', 160, 'Penthouse de luxe dernier étage avec terrasse de 80m². Vue 360° sur Marseille et la mer. Standing exceptionnel.', 0, 6, 4440, 8, 0, NULL, 'Lucas Garnier', NULL, 1, NULL, NULL),
-(8, 'Cottage Provençal', '5 Chemin des Oliviers', 110, 'Charmant cottage entouré d\'oliviers. Piscine chauffée, jardin méditerranéen. Calme absolu, idéal détente.', 1, 5, 22127, 9, 0, NULL, 'Léa Faure', NULL, 1, NULL, NULL),
-(9, 'Appartement Capitole Toulouse', '12 Place du Capitole', 68, 'Appartement rénové en plein cœur de Toulouse. Vue sur la place, proche métro et commerces. Équipement haut de gamme.', 0, 4, 31978, 1, 0, NULL, 'Hugo Andre', NULL, 1, NULL, NULL),
-(10, 'Villa Basque Biarritz', '18 Avenue de la Mer', 200, 'Superbe villa basque à 100m de la plage. 5 chambres, piscine, grand jardin. Architecture typique, tout confort.', 1, 10, 23695, 3, 0, NULL, 'Chloé Lambert', NULL, 1, NULL, NULL),
-(11, 'Loft Strasbourg', '22 Quai des Bateliers', 88, 'Loft moderne quartier de la Petite France. Cachet alsacien, poutres et pierres apparentes. Proche cathédrale.', 0, 4, 32195, 7, 0, NULL, 'Pierre Dubois', NULL, 1, NULL, NULL),
-(12, 'Maison Nantaise', '35 Rue de la Loire', 125, 'Maison de maître nantaise avec jardin arboré. 4 chambres, parking privé. Quartier résidentiel calme.', 1, 8, 20158, 2, 0, NULL, 'Marie Moreau', NULL, 1, NULL, NULL),
-(13, 'Studio Montpellier', '9 Rue de l\'Université', 32, 'Studio étudiant rénové, proche fac et tramway. Idéal pour courts ou longs séjours. Tout équipé.', 0, 2, 22127, 4, 0, NULL, 'Events Pro SARL', NULL, 1, NULL, NULL),
-(14, 'Résidence Toulon Port', '14 Quai de la Marine', 78, 'Appartement dans résidence sécurisée vue port. 2 chambres, balcon, parking. Proche plages et centre.', 0, 5, 33613, 10, 0, NULL, 'Thomas Leroy', NULL, 1, NULL, NULL),
-(15, 'Chalet Alpes', '7 Route de la Montagne', 150, 'Grand chalet familial station de ski. 6 chambres, sauna, cheminée. Accès direct pistes l\'hiver.', 1, 12, 32716, 5, 0, NULL, 'Vacances Corp SAS', NULL, 1, NULL, NULL);
+(1, 'Appartement Vue Tour Eiffel', '', 0, '', 0, 0, 30438, 1, 0, 1, 'Pierre Dubois', NULL, 1, 3, '2025-12-08 13:55:33'),
+(2, 'Villa Méditerranée', '25 Corniche Kennedy', 180, 'Superbe villa face à la mer avec piscine privée. 4 chambres, jardin de 500m². Vue panoramique sur la Méditerranée. Accès direct à la plage.', 1, 8, 4440, 3, 0, 2, 'Marie Moreau', NULL, 1, 3, '2025-12-06 13:55:47'),
+(3, 'Loft Design Lyon', '15 Quai Saint-Antoine', 95, 'Loft contemporain dans le vieux Lyon. Style industriel avec poutres apparentes. Proche des restaurants et commerces.', 0, 6, 19746, 7, 0, 3, 'Thomas Leroy', NULL, 1, 2, '2025-11-12 13:56:05'),
+(4, 'Maison Bordelaise', '42 Rue des Vignes', 140, 'Belle maison bordelaise rénovée avec jardin. Proche des châteaux viticoles. Parfaite pour découvrir la région des vins.', 1, 6, 8865, 2, 0, 4, 'Julie Petit', NULL, 1, 1, '2025-12-01 13:56:24'),
+(5, 'Studio Nice Centre', '8 Promenade des Anglais', 35, 'Studio cosy avec balcon vue mer. À deux pas de la plage et du centre-ville. Tout équipé pour 2 personnes.', 0, 2, 1816, 4, 0, 5, 'Marc Rousseau', NULL, 1, 1, '2025-12-09 13:55:14'),
+(6, 'Chalet Annecy', '30 Route du Lac', 120, 'Chalet traditionnel savoyard avec vue sur le lac d\'Annecy et les montagnes. Cheminée, terrasse, 3 chambres. Idéal été comme hiver.', 1, 7, 32716, 5, 0, 6, 'Emma Blanc', NULL, 1, 2, '2025-12-04 14:00:09'),
+(7, 'Penthouse Marseille', '100 Boulevard Michelet', 160, 'Penthouse de luxe dernier étage avec terrasse de 80m². Vue 360° sur Marseille et la mer. Standing exceptionnel.', 0, 6, 4440, 8, 0, 7, 'Lucas Garnier', NULL, 1, 3, '2025-09-30 12:59:43'),
+(8, 'Cottage Provençal', '5 Chemin des Oliviers', 110, 'Charmant cottage entouré d\'oliviers. Piscine chauffée, jardin méditerranéen. Calme absolu, idéal détente.', 1, 5, 22127, 9, 0, 8, 'Léa Faure', NULL, 1, 1, '2025-10-24 12:59:21'),
+(9, 'Appartement Capitole Toulouse', '12 Place du Capitole', 68, 'Appartement rénové en plein cœur de Toulouse. Vue sur la place, proche métro et commerces. Équipement haut de gamme.', 0, 4, 31978, 1, 0, 9, 'Hugo Andre', NULL, 1, 3, '2025-12-02 13:59:02'),
+(10, 'Villa Basque Biarritz', '18 Avenue de la Mer', 200, 'Superbe villa basque à 100m de la plage. 5 chambres, piscine, grand jardin. Architecture typique, tout confort.', 1, 10, 23695, 3, 0, 10, 'Chloé Lambert', NULL, 1, 1, '2025-12-08 13:58:37'),
+(11, 'Loft Strasbourg', '22 Quai des Bateliers', 88, 'Loft moderne quartier de la Petite France. Cachet alsacien, poutres et pierres apparentes. Proche cathédrale.', 0, 4, 32195, 7, 0, 1, 'Pierre Dubois', NULL, 1, 3, '2025-11-04 13:58:18'),
+(12, 'Maison Nantaise', '35 Rue de la Loire', 125, 'Maison de maître nantaise avec jardin arboré. 4 chambres, parking privé. Quartier résidentiel calme.', 1, 8, 20158, 2, 0, 2, 'Marie Moreau', NULL, 1, 3, '2025-12-03 13:57:57'),
+(13, 'Studio Montpellier', '9 Rue de l\'Université', 32, 'Studio étudiant rénové, proche fac et tramway. Idéal pour courts ou longs séjours. Tout équipé.', 0, 2, 22127, 4, 0, 11, 'Events Pro SARL', NULL, 1, 2, '2025-12-07 13:57:39'),
+(14, 'Résidence Toulon Port', '14 Quai de la Marine', 78, 'Appartement dans résidence sécurisée vue port. 2 chambres, balcon, parking. Proche plages et centre.', 0, 5, 33613, 10, 0, 3, 'Thomas Leroy', NULL, 1, 1, '2025-10-21 12:57:08'),
+(15, 'Chalet Alpes', '7 Route de la Montagne', 150, 'Grand chalet familial station de ski. 6 chambres, sauna, cheminée. Accès direct pistes l\'hiver.', 1, 12, 32716, 5, 0, 12, 'Vacances Corp SAS', NULL, 1, 3, '2025-12-12 13:56:56');
 
 -- --------------------------------------------------------
 
@@ -37326,6 +37327,17 @@ CREATE TABLE `favoris` (
   `date_ajout` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Déchargement des données de la table `favoris`
+--
+
+INSERT INTO `favoris` (`id_favori`, `id_locataire`, `id_biens`, `date_ajout`) VALUES
+(6, 3, 15, '2025-12-17 15:06:13'),
+(9, 13, 14, '2025-12-17 15:14:30'),
+(10, 13, 15, '2025-12-17 15:25:42'),
+(11, 13, 13, '2025-12-17 15:25:45'),
+(13, 14, 13, '2025-12-18 10:43:35');
+
 -- --------------------------------------------------------
 
 --
@@ -37364,7 +37376,8 @@ INSERT INTO `locataire` (`id_locataire`, `nom_locataire`, `prenom_locataire`, `d
 (10, 'Lambert', 'Chloé', '1996-10-08', 'chloe.lambert@email.fr', '$2y$10$92IXUNpkjO0rO', '0600112233', '41 Rue Nationale', 'Apt 22', NULL, NULL, 29917),
 (11, 'Société', 'Événements Pro', '1980-01-01', 'contact@events-pro.fr', '$2y$10$92IXUNpkjO0rO', '0700112233', '50 Avenue des Entreprises', NULL, 'Events Pro SARL', '12345678901234', 30438),
 (12, 'Entreprise', 'Vacances Corp', '1975-01-01', 'info@vacances-corp.fr', '$2y$10$92IXUNpkjO0rO', '0700223344', '88 Rue du Business', NULL, 'Vacances Corp SAS', '23456789012345', 19746),
-(13, 'Enjolras', 'Ethan', '2006-05-19', 'enjolras.ethan3@gmail.com', '$2y$10$kob9tz3Vkh4kd', '0768872301', 'Rue Des Jargasses', '', NULL, NULL, 6897);
+(13, 'Enjolras', 'Ethan', '2006-05-19', 'enjolras.ethan3@gmail.com', '$2y$10$6BCxM83wedLXg', '0768872301', 'Rue Des Jargasses', '', NULL, NULL, 6897),
+(14, 'Rouyer', 'Guillaume', '2005-09-05', 'r.guillaume@gmail.com', '$2y$10$zFHrt03x9E6Yl', '0202020202', 'Avenue Edmond Michelet', '', NULL, NULL, 6911);
 
 -- --------------------------------------------------------
 
@@ -37658,7 +37671,7 @@ INSERT INTO `reservation_archive` (`id_archive`, `id_reservation_original`, `don
 (10, 5, 'bRO5azu4eDJQEbPJ48OBKu50GcXD6ixG51Ok20NcWSXrnXTQXyPulygLUtePLqy+EnvJLyVrOcpzlr9IBTXi8iwjrt1iF3cYX2fOtP0Pcifqh3RDOzuSx1oIg5mQ/XWBBtlaxlNeTPN5e4AgFsY3rwXrhT1YdDi54dY8VaXuYnMyBNtl6THUCqMTRK0wcQBTo4qjXg7g8Zcz+5rJczORnxvQhbQrPCyXpWpg6W/pEkEDNclOl7xK9Dijn1rJhRj2d7FlRB8pBSLCRKFQFxq8Ik2uU3NRWXSppZC/+G4MG8hfKsrJOq/A4Hwm8E2rxNcXASi+txDjEd48X/u0Dn1nCivsylVs0j7r1aUfTps6VOQtMGMl6IkEewSbix6oPRF85DJEijCFJve2LStejRtnTtAmAnD5U2HVNT6VaRDsyegEqDWDclc413Gc1zIUrjSeYcu9W4T5uRQp7g5dPFFLTIlVeuLCqeK8GBuskoljICuhUCgR6uZag39T8cQVmBRwBXD+45u6fbW1QxuVM3b+K/YVy5A0Ef1xJP66i2EREE8JYAQURvBSsifESj6+kwGg7cwBRD3yGcQEMAY2E7w/BtiOZaYt98DI40skbpvn/1WuKhwwzcNsICQWjIM2x2wCXPvQKiaq86aaxcF2aqhgKp5tL+ToyWgSdmCv9WhWHG9L1ywXnMUHciJRfUdgx9LImcg0ubq/sFN9B2HmT9Xe//aBvIe8jeo3aPhyWglpw85GZ0q1Mku9iKYka4qKyssG9llPha654aJrwEgR3P5eNOo2IhiquXsXbz7qJSQoptAXbtEOR3/KeHgtFblF6aYG1+127oJVFOtRosXBQ6wyqKolfmr/BggdsSsEuH6HltEfV2AmLcq1plnBgp8s4pG2S9saVZBwEOFwU/RzBe7bm94ym8EQmgyKETM2HiXvuNud+el1X9jx0pEr1fxzcfdD2OvkuKDE7Ox+OWUSqwUOtg==', '3fef1b0ce6a900e8f555277847ce7e3cf0116063b4f4c57c14ccc365f17a3e71', '6d13b96b3bb878325011b3c9e3c3812a', '2025-12-16 08:32:25', '2024-10-01', '2024-10-08', 5, 5, 'archivé', '2025-12-16 08:32:25'),
 (11, 4, '6R9S10yhp0BtM4FwIbNo3MJb4jsOp8JSQpCIR8lKTUL/BkDXPbpUMIUqYvH7rW/kVvf57eJN9T3YtLMuCaqGcR9l2P0k9VLsQPoi8YJnP0/Az90V1qGVl/VvwrdMA7L5KKqjEdHeEs4q5t4slcl/Erw6YBQ/kuacZkaqTTCV0UI/l/8xwA6ZhvtN9fd/xy4xn1aPNHmy5puy1l5iDOPCaCa/oWGJn0+llUBrabbFg+YUVIsB+YIX53NK6gDEGG9QXx6D5H7/o+9rZSNndF1Lq/PZJYNGqavyw05j7bPmmeFyHFV5hRt8RyMORs3gbUOf5XjcA4EmlUzPx00p5YLoPUoAWc8cbvPK9oFD8WeCt5UQbNHPHUWqQ9Gqnv8PQEt4egyhtm4sj+8hBwEvrB/Q0KYFxNreDhEzIHDP22OExy2fJbJ8ZrY6o4z8/9Vx/RAdIZi9IzTmTvsRFIpB3P6M1q9MeGGCBOGWYtLWz6hc9E/A3T4TwfoS3uczGo9V3mkNjSG02vtwmPYIaPyYHUUVptfws/OCCWQvX/y5h2FlnabN0rMW1vurhyVvEPMZQe2T3yu/gLkOcm2SY9IeFOP5Q9Z/ycTBhBu9Vzl9Afxxrb4AG0TJwbB2iJKUEF0HKof+sfzKyGJZVm2VwbM/9Pzjpbo0xKAYA1ZeMDbtRx2toN2QsZ+or0UOzWpjGhUGMzfw5cFAoKpfKGSbeZXKXzpVE3//Heo0ttmtqnu/w5fT39Luaok+pVDriPRAJMYB0inTWAsOg/yLzZoztYKv6RUIfjCJLbDVjkTsM7joAuw+/bMi6n7IC5ByDa56ei4gXyjyuhRm0TRkt35aFa5D4WYGdH97eI6tEP1qU0zP4au5ok4ugWPNNFrkC89c7tqTpQj20TKPT0VjZpvBsqWRnr6fyaU3tqrN2Dr7pS7evPnaLGVpmS6hy27wug2arOpRu0hvFS5TKA2tkI6bMfbGKG5B2PR5kHW1Aec8kVdvaqduK18=', '9d0b21da948cf1bc4b07564241e275e69fbe1f48f33d91944573423a852cecf8', 'e91f52d74ca1a7406d33817021b368dc', '2025-12-16 08:32:47', '2024-09-05', '2024-09-12', 4, 4, 'archivé', '2025-12-16 08:32:47'),
 (12, 2, '+vdpT25sejBOAHbRmGM70ojFT9adenmAzle7RkAB69qNHbGlEvIQTFdaki3ccVEZcUTM1fxn0bhV+M7kY23QpCu1r+Ki93eAdZLmk+bYwcZLrtsF6YNKRtXpbY2NbDZu1ZGMePf+LwYsH+Ma+SehoQetFqa6xq/D5OX+vJepvVAgXBYY1hh0e4LDsC/g0u/6zGkTfHyzaOHuLVr64JKSp4iJsw9UJj+aQHQI3LtTfGo53yl/HVe1nfoZ0jQlhX1pbbesezC2pPiuZD7GMRhs7YCUWK4zYX9Sb+XbBqObGJq3QH4QgyJUim+sDSiexo46s5sNXOMeFMdxBXwVxEAI5rp71va2JoaNNboj31vs2j99Y9Eb4qPuKKVzIFIiRwlSjLpWb0Rbj1hgkLxasSi5R6q0YZba7DHpFV7eWb5CzZumYowRJii+j1EhKHZLspXX5fFB8U14gHRuNTDir4VXv6vVBnmzsvzvhJpCIfvRqHgF/yRs1CIM2nflXqZx23W+QWjaz0Hrb4DKuLm31speNtVb+wQHaR+401kJeOMm2UE7xZdwjPCIkEYAS1dfCd7A4nG5jbjgURJ/DAcnVLhdcBg3GHBggOFo2lWIvWJjuP/Vd6IkG2fE3iJm2yRktOqKl51soCHBNUE9kkO7DG9KnkkA1gKun0CNTRVOo19ICqXfPiD7Re5ShYieER6P/qfGW5u64nJkRLyt5cGGKGsS+k1teJkOwUNbUMEw8f1r1SM9lE4ffCGIXIGthY5tNWpFLQAAiXAztcjZKk1Ppcu03rOZT0czYu4Mcbb3Bla1XtuaMl48Ils+qUL5b8gHj8cNg7y7++/DfwoDch3stQSBm1NUkP9NN5C1F1zbxVAwybxfDh2XLTekMvKNmeynFo0TdhAXxA5pDsQbbfbU3QKRZU47xRgey9pF5Itk8xSWr2diGWFZBAE2w3JzlkeSb1axrCaKDJA4G5JzmPxElByklvo27kwrSNEoT7j1p237CQdhnFg/y1oKAyhmURTYRQkf', '6958f02d546496ef0265e6ca850ebfc5c1a157a21110577ce03d2de4fa3fac1a', 'faf7694f6e6c7a304e0076d198633bd2', '2025-12-16 08:32:47', '2024-08-10', '2024-08-17', 2, 2, 'archivé', '2025-12-16 08:32:47'),
-(13, 1, 'd1lFVIHt1A474/ZYQ3sCzTogqP2NsFDleLOKqUbXkvUolzaugnFX8l1fp/voKpDtiLsk4NKtfq/uX27dqlu9NoKAL/uxQ7RGdduco6tibCuECngcaBz1gbaY5WNKrGKB94DD4fA3DLtHI9OXVtdkQmwJkK7uZxO/d+YJvv7s9Q91IKe9GQubRqfntcIRtG1dBwxKA2Jzr4qER8Tx5HpoDccBOTrXa9O/OJGyBr6k279BUSp9mIjALNdSZWHI/SDvW0jvVAnMv3xtA3avjW1QFt572pB/yaPPZW2BaRAD7bRQ08HLAmRfx2VzhJT1IApDoJcEd3MZrB/juqtQW36q4HBdwSIBKtmYWvTUbW+635StOBM0FUavbntMSjFRr1asI6k7xq+q9R7GD3yEDc+5iiI4ZxajF1UJfmPWnNMWfK3SSVGA7qXMlF4h/HJabNOtBtdZRVfctzV96koPFVv5os5D3SGkWPiZ9A7GkeMExYmxYbGFBETf5iIBLO4zfqtlWNYC0nlF1+QsgWyyX6DKrcT/JOglxvWEwYG5kDjVjONGm7QRD2i/jk9R4tF0P2gPqOGXlGbnF5iIz/T+4Sd+4yAaYUR8O7jSfOLj5F5v2adnKk2jd9tkY0krVOwMZXUmX9stpFdNESFuGrfAvOQTiGPCf904q/5pF1cqexkIIRmECQ8MAZerf3mGWafXrYS/au1lEmJLiEXTRfOUf6b2jFto8nS3f0NRyGS1nEW3bnPcPnvUNVvnIOOxsT7t/SxrQiTVCVr9iK+ThrAmCwuIl/0P9KPkBfTvYRhjCwNVKwZ9LJpUoY3hpWcjDK5wXD/Vin1gzU3EjykWTIuMfs7y+3n1/Jv/ELQMjIJyBX23FvLmXrJPweWVFM8L8C3kD2toDKQSPt1hlpCU4/DWo57wUA/Qn/ge1+tNXFCUuVtvJAiiB8fz9dr0eC9IaIsmc+CPwhjWqAsH53fDD7QVtjeDNBJo7au6wVvFKmdMDywAONzCQtuh0kw/JKfwkcV21QZMHwAH/yi5DXceW0oVHCRgjw==', 'c8fe13d48667cf0458c3e07946e4c4086b7325094197369435c7546c3e8aada7', '7759455481edd40e3be3f658437b02cd', '2025-12-16 08:32:47', '2024-07-01', '2024-07-08', 1, 1, 'archivé', '2025-12-16 08:32:47'),
+(13, 1, 'd1lFVIHt1A474/ZYQ3sCzTogqP2NsFDleLOKqUbXkvUolzaugnFX8l1fp/voKpDtiLsk4NKtfq/uX27dqlu9NoKAL/uxQ7RGdduco6tibCuECngcaBz1gbaY5WNKrGKB94DD4fA3DLtHI9OXVtdkQmwJkK7uZxO/d+YJvv7s9Q91IKe9GQubRqfntcIRtG1dBwxKA2Jzr4qER8Tx5HpoDccBOTrXa9O/OJGyBr6k279BUSp9mIjALNdSZWHI/SDvW0jvVAnMv3xtA3avjW1QFt572pB/yaPPZW2BaRAD7bRQ08HLAmRfx2VzhJT1IApDoJcEd3MZrB/juqtQW36q4HBdwSIBKtmYWvTUbW+635StOBM0FUavbntMSjFRr1asI6k7xq+q9R7GD3yEDc+5iiI4ZxajF1UJfmPWnNMWfK3SSVGA7qXMlF4h/HJabNOtBtdZRVfctzV96koPFVv5os5D3SGkWPiZ9A7GkeMExYmxYbGFBETf5iIBLO4zfqtlWNYC0nlF1+QsgWyyX6DKrcT/JOglxvWEwYG5kDjVjONGm7QRD2i/jk9R4tF0P2gPqOGXlGbnF5iIz/T+4Sd+4yAaYUR8O7jSfOLj5F5v2adnKk2jd9tkY0krVOwMZXUmX9stpFdNESFuGrfAvOQTiGPCf904q/5pF1cqexkIIRmECQ8MAZerf3mGWafXrYS/au1lEmJLiEXTRfOUf6b2jFto8nS3f0NRyGS1nEW3bnPcPnvUNVvnIOOxsT7t/SxrQiTVCVr9iK+ThrAmCwuIl/0P9KPkBfTvYRhjCwNVKwZ9LJpUoY3hpWcjDK5wXD/Vin1gzU3EjykWTIuMfs7y+3n1/Jv/ELQMjIJyBX23FvLmXrJPweWVFM8L8C3kD2toDKQSPt1hlpCU4/DWo57wUA/Qn/ge1+tNXFCUuVtvJAiiB8fz9dr0eC9IaIsmc+CPwhjWqAsH53fDD7QVtjeDNBJo7au6wVvFKmdMDywAONzCQtuh0kw/JKfwkcV21QZMHwAH/yi5DXceW0oVHCRgjw==', 'c8fe13d48667cf0458c3e07946e4c4086b7325094197369435c7546c3e8aada7', '7759455481edd40e3be3f658437b02cd', '2025-12-16 08:32:47', '2024-07-01', '2024-07-08', 1, 1, 'restauré', '2025-12-18 08:52:49'),
 (14, 3, 'SyvhMlSzgRzloqBN6TwD/MH6VZKxCu7C3jSUAWmT6geKVGX5heWKMbGI3/rnxiJsIvshdowjU7q07EvJOh2Oj/ptcPFsvbkV75inULlFeI8peYAbSt/JRg0Ns5O6YHAYIDoRLmNdgeHqXZPkh4tvIyu/hw1129WcgvI1s9AM7t5n6W6Qh+N2ORGU7PLfeC6q6+WDWSUF1S6y4OKHxR/vKthr/Oi+LSAxqBNH2uTeLo+SYI/8ZXT/cYHGXewYXgZhlW3qcgmlpNseni263sXXizZbfX9PaikumbuwGEHXvrhWqGdG8hpSzxE+IY30U+U1ewndqu8alKrdi0pJbI/twwH5QqsTOV8rQm0GXo0rK/v3pMzcywT5U0jCU0mMh9jCu6iKe8FzRLHwdbugDVZBeoYWDHQLEkacrZgoJBP8hm5mNkD9G827QczgxkBfRMuuUG08Ih/404qLtUlRWeY1gMQ6zzGSo6pRfImAVE634aQpbHuKfoRXw6U9HM8Ou33J4nhmuo6PRbv9ohD5G4NZ/t1ICht0f2OZ62eMdZa0EIMEGUU59ZlkupJdN/KNK1FJt3hyh5/2ElRz3kxulJTj559cSbMnhbbYQKusnrmDaZJ2irLDhNO21UzyUMdClYGVLP6H8HsZJnCXPumQtPtjYvWbD5lZV5IBYEvuVjGYIA7Of2xICxke3qLXrtzhJN0xDFYQ0jkYGQndUMkWcpvfspg1KzNeOODWPed3PStJRhSfGpkcADF3yQ+vBvTyoQmEgH3aVNFpmhRlbz8CuRxV+6SZ2jMlf4ES0M3ccQOJuGHhyC28fX8UKdgJUnZ7FFCzozS+LqrlFQapBW8gUs4dTo62+b+dueK4tI5Bos/e0YGlR7z34xQvprT7dRvOvmmB003h4ejWjrm/GVwYBKnD/YOs+PrjAumQzQ3QAZs6NWWHasdiVPy/6oSaxmQodCIcD/+gSN23k58VGZ5FO2/jbrXsTyS1CmQr1gjeTeE4zbQ=', '29b31f1979cb54a4a091bc74245e755e17de154e987c1c2ffa269b09cdb3d27d', '4b2be13254b3811ce5a2a04de93c03fc', '2025-12-16 08:32:47', '2024-06-15', '2024-06-22', 3, 3, 'restauré', '2025-12-16 08:49:47');
 
 -- --------------------------------------------------------
@@ -37958,7 +37971,7 @@ CREATE TABLE `user_login_attempts` (
 --
 
 INSERT INTO `user_login_attempts` (`id`, `ip_address`, `email`, `attempt_time`, `success`) VALUES
-(2, '::1', 'enjolras.ethan3@gmail.com', '2025-12-16 11:30:55', 1);
+(6, '::1', 'r.guillaume@gmail.com', '2025-12-18 10:41:00', 1);
 
 -- --------------------------------------------------------
 
@@ -37973,6 +37986,13 @@ CREATE TABLE `user_registration_attempts` (
   `attempt_time` datetime DEFAULT current_timestamp(),
   `success` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `user_registration_attempts`
+--
+
+INSERT INTO `user_registration_attempts` (`id`, `ip_address`, `email`, `attempt_time`, `success`) VALUES
+(1, '::1', 'r.guillaume@gmail.com', '2025-12-18 10:39:42', 1);
 
 -- --------------------------------------------------------
 
@@ -75115,7 +75135,7 @@ ALTER TABLE `villes_france_free`
 -- AUTO_INCREMENT pour la table `admin_login_attempts`
 --
 ALTER TABLE `admin_login_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT pour la table `animateur`
@@ -75127,13 +75147,13 @@ ALTER TABLE `animateur`
 -- AUTO_INCREMENT pour la table `archive_log`
 --
 ALTER TABLE `archive_log`
-  MODIFY `id_log` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id_log` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT pour la table `biens`
 --
 ALTER TABLE `biens`
-  MODIFY `id_biens` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id_biens` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT pour la table `commune`
@@ -75157,13 +75177,13 @@ ALTER TABLE `evenement`
 -- AUTO_INCREMENT pour la table `favoris`
 --
 ALTER TABLE `favoris`
-  MODIFY `id_favori` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_favori` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT pour la table `locataire`
 --
 ALTER TABLE `locataire`
-  MODIFY `id_locataire` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id_locataire` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT pour la table `password_resets`
@@ -75199,7 +75219,7 @@ ALTER TABLE `pts_interet`
 -- AUTO_INCREMENT pour la table `reservation`
 --
 ALTER TABLE `reservation`
-  MODIFY `id_reservation` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id_reservation` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT pour la table `reservation_archive`
@@ -75229,7 +75249,7 @@ ALTER TABLE `semaine_indisponible`
 -- AUTO_INCREMENT pour la table `tarif`
 --
 ALTER TABLE `tarif`
-  MODIFY `id_Tarif` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=65;
+  MODIFY `id_Tarif` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=66;
 
 --
 -- AUTO_INCREMENT pour la table `tarif_defaut`
@@ -75259,13 +75279,13 @@ ALTER TABLE `type_pts_interet`
 -- AUTO_INCREMENT pour la table `user_login_attempts`
 --
 ALTER TABLE `user_login_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT pour la table `user_registration_attempts`
 --
 ALTER TABLE `user_registration_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT pour la table `villes_france_free`
