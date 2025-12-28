@@ -393,7 +393,7 @@ Le système est conçu pour être extensible (API REST, modules de paiement addi
 
 Pour toute question ou problème :
 
-- **Email** : contact@hap.fr
+- **Email** : contact@hap.fr (ceci est un faux email)
 - **Formulaire** : Page Contact du site
 - **Documentation** : Ce fichier README
 
