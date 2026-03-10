@@ -168,21 +168,15 @@ class Locataire{
             } elseif (substr($stored_hash, 0, 4) === '$2y$' && strlen($stored_hash) < 60) {
                 // Truncated bcrypt hash, treat as plain text and re-hash
                 $authenticated = true;
-                $hashed = password_hash($password, PASSWORD_DEFAULT);
-                $updateStmt = $this->pdo->prepare("UPDATE Locataire SET password_locataire = :hash WHERE id_locataire = :id");
-                $updateStmt->execute(['hash' => $hashed, 'id' => $locataire['id_locataire']]);
+                $this->upgradePasswordHashIfPossible((int) $locataire['id_locataire'], $password);
             } elseif (strlen($stored_hash) < 60 && $password === $stored_hash) {
                 // Plain text
                 $authenticated = true;
-                $hashed = password_hash($password, PASSWORD_DEFAULT);
-                $updateStmt = $this->pdo->prepare("UPDATE Locataire SET password_locataire = :hash WHERE id_locataire = :id");
-                $updateStmt->execute(['hash' => $hashed, 'id' => $locataire['id_locataire']]);
+                $this->upgradePasswordHashIfPossible((int) $locataire['id_locataire'], $password);
             } elseif (md5($password) === $stored_hash) {
                 // MD5 hash
                 $authenticated = true;
-                $hashed = password_hash($password, PASSWORD_DEFAULT);
-                $updateStmt = $this->pdo->prepare("UPDATE Locataire SET password_locataire = :hash WHERE id_locataire = :id");
-                $updateStmt->execute(['hash' => $hashed, 'id' => $locataire['id_locataire']]);
+                $this->upgradePasswordHashIfPossible((int) $locataire['id_locataire'], $password);
             }
 
             if ($authenticated) {
@@ -190,5 +184,17 @@ class Locataire{
             }
         }
         return false;
+    }
+
+    private function upgradePasswordHashIfPossible($id_locataire, $plainPassword)
+    {
+        try {
+            $hashed = password_hash($plainPassword, PASSWORD_DEFAULT);
+            $updateStmt = $this->pdo->prepare("UPDATE Locataire SET password_locataire = :hash WHERE id_locataire = :id");
+            $updateStmt->execute(['hash' => $hashed, 'id' => $id_locataire]);
+        } catch (Exception $e) {
+            // Keep login successful even if legacy column length prevents hash upgrade.
+            error_log('Password hash upgrade skipped for locataire ' . $id_locataire . ': ' . $e->getMessage());
+        }
     }
 }

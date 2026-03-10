@@ -136,7 +136,10 @@ echo str_repeat("-", 50) . "\n";
 try {
     $tables = ['Reservation_Archive', 'Archive_Log'];
     foreach ($tables as $table) {
-        $pdo->exec("OPTIMIZE TABLE $table");
+        // OPTIMIZE TABLE returns a result set in MySQL; consume it to avoid pending cursor issues.
+        $optStmt = $pdo->query("OPTIMIZE TABLE $table");
+        $optStmt->fetchAll(PDO::FETCH_ASSOC);
+        $optStmt->closeCursor();
         echo "   ✓ Table $table optimisée\n";
     }
 } catch (Exception $e) {
@@ -152,7 +155,7 @@ echo str_repeat("-", 50) . "\n";
 try {
     $logs = $archive_manager->getLogs(['action' => 'erreur']);
     if (count($logs) > 0) {
-        echo "   ⚠ $logs erreur(s) enregistrée(s)\n";
+        echo "   ⚠ " . count($logs) . " erreur(s) enregistrée(s)\n";
         foreach (array_slice($logs, 0, 5) as $log) {
             echo "   - [{$log['date_action']}] {$log['description']}\n";
         }

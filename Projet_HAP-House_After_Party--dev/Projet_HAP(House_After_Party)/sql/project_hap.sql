@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : jeu. 18 déc. 2025 à 16:25
+-- Généré le : mar. 10 mars 2026 à 08:42
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -37350,7 +37350,7 @@ CREATE TABLE `locataire` (
   `prenom_locataire` varchar(30) NOT NULL,
   `date_naissance` date NOT NULL,
   `email_locataire` varchar(50) NOT NULL,
-  `password_locataire` varchar(20) NOT NULL,
+  `password_locataire` varchar(255) NOT NULL,
   `telephone_locataire` varchar(15) NOT NULL,
   `rue_locataire` varchar(50) NOT NULL,
   `complement_locataire` varchar(50) DEFAULT NULL,

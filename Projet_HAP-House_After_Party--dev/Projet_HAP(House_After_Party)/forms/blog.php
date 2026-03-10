@@ -4,12 +4,26 @@ require_once __DIR__ . '/../config/db.php';
 
 $message = '';
 $messageType = '';
+$reviews = [];
+$biens = [];
+$avgRating = 0;
+$totalAllReviews = 0;
+$totalReviews = 0;
+$totalPages = 1;
+$page = 1;
+$filterBien = '';
+$filterNote = '';
 
 try {
     $pdo = $pdo ?? null;
     if ($pdo) {
-        // Add user_type column if not exists
-        $pdo->exec("ALTER TABLE Reviews ADD COLUMN IF NOT EXISTS user_type VARCHAR(10) DEFAULT 'locataire'");
+        // Add user_type column if it does not exist (portable for MySQL versions without ADD COLUMN IF NOT EXISTS).
+        $colCheck = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'reviews' AND COLUMN_NAME = 'user_type'");
+        $colCheck->execute();
+        $hasUserType = (int) $colCheck->fetchColumn() > 0;
+        if (!$hasUserType) {
+            $pdo->exec("ALTER TABLE Reviews ADD COLUMN user_type VARCHAR(10) DEFAULT 'locataire'");
+        }
         
         // Handle new blog/review submission
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['post_review'])) {
@@ -780,7 +794,7 @@ try {
                                id="filter_bien_input" 
                                name="filter_bien" 
                                placeholder="🔍 Filtrer par bien..." 
-                               value="<?= htmlspecialchars($filterBien) ?>"
+                               value="<?= htmlspecialchars($filterBien ?? '') ?>"
                                autocomplete="off">
                         <select name="filter_note">
                             <option value="">Toutes les notes</option>
