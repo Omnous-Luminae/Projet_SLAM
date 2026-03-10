@@ -152,7 +152,6 @@ Julien supervise la plateforme :
 3. Créer la base de données `project_hap` via phpMyAdmin
 4. Importer le script SQL principal :
     - `Projet_HAP(House_After_Party)/sql/projet_hap.sql`
-    - (optionnel) Importer les données de test : `Projet_HAP(House_After_Party)/sql/donnees_test_completes.sql`
 5. Configurer la connexion BDD dans `Projet_HAP(House_After_Party)/config/db.php`
 6. Accéder au site : http://localhost/HAP/
 
@@ -251,7 +250,7 @@ Utilisateur
     │
     ├──> Réservation (API/update_reservation.php)
     │         │
-    │         └──> Paiement/Confirmation (email)
+    │         └──> Paiement/Confirmation
     │
     ├──> Avis (forms/blog.php, API/validate_reviews.php)
     │
@@ -383,17 +382,12 @@ L’admin définit les périodes de haute/basse saison et ajuste dynamiquement l
 
 Oui, les administrateurs peuvent exporter les réservations, avis, utilisateurs au format CSV depuis le dashboard.
 
-### Peut-on intégrer d’autres moyens de paiement ?
-
-Le système est conçu pour être extensible (API REST, modules de paiement additionnels).
-
 ---
 
 ## Support & Licence
 
 Pour toute question ou problème :
 
-- **Email** : contact@hap.fr
 - **Formulaire** : Page Contact du site
 - **Documentation** : Ce fichier README
 
@@ -402,3 +396,62 @@ Pour toute question ou problème :
 © 2025 House After Party - Tous droits réservés.
 
 *Fait avec ❤️ pour les amoureux des nuits blanches*
+
+## Login
+
+- **un admin** : identifiant : enjolras.ethan3@gmail.com
+                 mdp : @zerty123L
+
+- **un user** : identifiant : r.guillaume@gmail.com 
+                mdp : @zerty123L
+
+---
+
+## Docker (Nouveau)
+
+Le projet peut maintenant tourner avec Docker (PHP/Apache + MySQL) sans XAMPP.
+
+### Fichiers ajoutes
+
+- `Dockerfile`
+- `docker-compose.yml`
+- `.dockerignore`
+
+### Lancer l'application
+
+Depuis la racine du projet :
+
+```bash
+docker compose up -d --build
+```
+
+Acces :
+
+- Application : `http://localhost:8080`
+- Application : `http://localhost:8081`
+- MySQL : `localhost:3307`
+
+### Base de donnees
+
+- Le dump `Projet_HAP(House_After_Party)/sql/project_hap.sql` est importe automatiquement au premier demarrage.
+- La persistance est assuree par le volume Docker `db_data`.
+- Le conteneur MySQL est configure avec `lower_case_table_names=1` pour eviter les erreurs de casse entre `Biens`/`biens`, `Pts_Interet`/`pts_interet`, etc.
+
+Pour reinitialiser completement la base :
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+### Configuration DB dans l'app
+
+Le fichier `Projet_HAP(House_After_Party)/config/db.php` lit maintenant les variables d'environnement suivantes (avec fallback local) :
+
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `DB_USER`
+- `DB_PASS`
+
+Cela permet de conserver un fonctionnement local classique tout en etant compatible Docker.

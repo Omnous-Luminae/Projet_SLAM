@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'animateur') {
-    header('Location: /auth/connexion.php');
+    header('Location: /Projet_HAP(House_After_Party)/auth/connexion.php');
     exit;
 }
 require_once 'Projet_HAP(House_After_Party)/config/db.php';

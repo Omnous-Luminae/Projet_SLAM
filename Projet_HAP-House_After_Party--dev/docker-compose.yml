@@ -1,0 +1,44 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: hap_db
+    command: ["--lower_case_table_names=1"]
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: Project_HAP
+      MYSQL_USER: hap_user
+      MYSQL_PASSWORD: hap_password
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./Projet_HAP(House_After_Party)/sql/project_hap.sql:/docker-entrypoint-initdb.d/01-project_hap.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hap_web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: Project_HAP
+      DB_USER: hap_user
+      DB_PASS: hap_password
+      DB_PORT: 3306
+    ports:
+      - "8081:80"
+    volumes:
+      - ./:/var/www/html
+
+volumes:
+  db_data:
